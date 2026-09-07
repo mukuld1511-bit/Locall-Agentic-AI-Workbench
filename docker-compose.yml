@@ -1,0 +1,156 @@
+# =================================================================
+# Sovereign Industrial AI Workbench - Docker Compose
+# Organization: MRPL | Problem Statement: SIH26117
+# Deployment: Air-Gapped On-Premise | ZERO External Network Egress
+# =================================================================
+#
+# IMPORTANT:
+# - All containers run on an internal-only bridge network (no internet).
+# - GPU passthrough requires NVIDIA Container Toolkit installed on host.
+# - Model weights (.gguf) must be pre-loaded on local disk before deployment.
+# - SQLite database is mounted from host for persistence.
+# =================================================================
+
+version: "3.9"
+
+networks:
+  sovereign_internal:
+    driver: bridge
+    internal: true  # CRITICAL: No external internet access
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  workbench_data:
+    driver: local
+  model_cache:
+    driver: local
+
+services:
+  # ---------------------------------------------------------------
+  # 1. Backend API Service (FastAPI / Uvicorn)
+  # ---------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: sovereign_backend
+    restart: unless-stopped
+    networks:
+      - sovereign_internal
+    ports:
+      - "127.0.0.1:8400:8400"  # Bind to localhost only
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs:ro
+      - ./models:/app/models:ro
+      - workbench_data:/app/workbench_data
+    environment:
+      - SOVEREIGN_MODE=AIRGAPPED
+      - WORKBENCH_DB_PATH=/app/workbench_data/workbench.db
+      - ARTIFACTS_DIR=/app/workbench_data/artifacts
+      - LOG_LEVEL=INFO
+      - MAX_WORKERS=4
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8400/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------
+  # 2. Isolated Python Sandbox (Ephemeral Code Execution)
+  # ---------------------------------------------------------------
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    container_name: sovereign_sandbox
+    restart: unless-stopped
+    networks:
+      - sovereign_internal
+    read_only: true
+    tmpfs:
+      - /tmp:size=256M,noexec=false
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_PTRACE  # For subprocess monitoring
+    environment:
+      - SANDBOX_TIMEOUT_SEC=10
+      - SANDBOX_MAX_MEMORY_MB=512
+      - SANDBOX_NETWORK_DISABLED=true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
+
+  # ---------------------------------------------------------------
+  # 3. Model Inference Service (llama.cpp / vLLM Backend)
+  # ---------------------------------------------------------------
+  inference:
+    build:
+      context: .
+      dockerfile: Dockerfile.inference
+    container_name: sovereign_inference
+    restart: unless-stopped
+    networks:
+      - sovereign_internal
+    ports:
+      - "127.0.0.1:8401:8401"
+    volumes:
+      - ./models:/models:ro
+      - model_cache:/cache
+    environment:
+      - MODEL_DIR=/models
+      - CACHE_DIR=/cache
+      - CUDA_VISIBLE_DEVICES=0
+      - VRAM_BUDGET_MB=7168
+      - VRAM_RESERVE_MB=1024
+      - MAX_CONCURRENT_REQUESTS=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: 16G
+
+  # ---------------------------------------------------------------
+  # 4. RAG / Vector Store Service (ChromaDB Local)
+  # ---------------------------------------------------------------
+  vectordb:
+    build:
+      context: .
+      dockerfile: Dockerfile.vectordb
+    container_name: sovereign_vectordb
+    restart: unless-stopped
+    networks:
+      - sovereign_internal
+    ports:
+      - "127.0.0.1:8402:8402"
+    volumes:
+      - workbench_data:/data/vectordb
+      - ./data/documents:/data/documents:ro
+    environment:
+      - CHROMA_DB_PATH=/data/vectordb/chroma
+      - PERSIST_DIRECTORY=/data/vectordb
+      - ANONYMIZED_TELEMETRY=false
+    deploy:
+      resources:
+        limits:
+          memory: 2G

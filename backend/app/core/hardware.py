@@ -65,16 +65,35 @@ def detect_local_hardware() -> HardwareProfile:
         except Exception:
             pass
 
-    # 3. Detect System RAM from /proc/meminfo or fallback
+    # 3. Detect System RAM: try Windows ctypes, /proc/meminfo, or psutil
     try:
-        with open("/proc/meminfo", "r") as f:
-            for line in f:
-                if "MemTotal" in line:
-                    kb = int(line.split()[1])
-                    sys_ram = int(kb / 1024)
-                    break
+        import ctypes
+        class MEMORYSTATUSEX(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("sullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+        stat = MEMORYSTATUSEX()
+        stat.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+            sys_ram = int(stat.ullTotalPhys / (1024 * 1024))
     except Exception:
-        pass
+        try:
+            with open("/proc/meminfo", "r") as f:
+                for line in f:
+                    if "MemTotal" in line:
+                        kb = int(line.split()[1])
+                        sys_ram = int(kb / 1024)
+                        break
+        except Exception:
+            pass
 
     return HardwareProfile(
         device_name=device_name,

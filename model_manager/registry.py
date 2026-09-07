@@ -113,7 +113,16 @@ class ModelRegistry:
         self._models[definition.worker_type] = definition
 
     def get_worker(self, worker_type: str) -> Optional[WorkerModelDefinition]:
-        return self._models.get(worker_type.lower())
+        wt = worker_type.lower().strip()
+        # Capability mapping aliases
+        aliases = {
+            "code": "coding",
+            "doc": "document",
+            "rag": "document",
+            "vlm": "vision",
+        }
+        mapped = aliases.get(wt, wt)
+        return self._models.get(mapped)
 
     def list_workers(self) -> List[Dict[str, Any]]:
         return [

@@ -90,25 +90,120 @@ class VerificationEngine:
         else:
             failed.append(f"File is abnormally small or empty ({size} bytes)")
 
-        # Check 3: Required sections
-        if required_sections:
-            try:
-                content = file_path.read_text(encoding="utf-8", errors="ignore")
-                for sec in required_sections:
-                    if sec.lower() in content.lower():
-                        passed.append(f"Required section present: '{sec}'")
-                    else:
-                        failed.append(f"Missing mandatory section: '{sec}'")
-            except Exception as e:
-                failed.append(f"Cannot parse artifact content: {str(e)}")
+        # Check 3: Format validity & Required sections
+        content_text = ""
+        ext = file_path.suffix.lower()
+
+        try:
+            if ext == ".docx":
+                import docx
+                doc = docx.Document(file_path)
+                passed.append("Valid Microsoft Word binary document structure (.docx)")
+                # Extract text from paragraphs and tables
+                p_text = " ".join(p.text for p in doc.paragraphs)
+                t_text = " ".join(c.text for t in doc.tables for r in t.rows for c in r.cells)
+                content_text = p_text + " " + t_text
+            elif ext == ".xlsx":
+                import openpyxl
+                wb = openpyxl.load_workbook(file_path, data_only=True)
+                passed.append("Valid Microsoft Excel binary workbook structure (.xlsx)")
+                sheet_texts = []
+                for sname in wb.sheetnames:
+                    sheet = wb[sname]
+                    for row in sheet.iter_rows(values_only=True):
+                        sheet_texts.extend(str(v) for v in row if v is not None)
+                content_text = " ".join(sheet_texts)
+            elif ext == ".pptx":
+                from pptx import Presentation
+                prs = Presentation(file_path)
+                passed.append("Valid PowerPoint presentation structure (.pptx)")
+                slide_texts = []
+                for slide in prs.slides:
+                    for shape in slide.shapes:
+                        if shape.has_text_frame:
+                            slide_texts.append(shape.text_frame.text)
+                content_text = " ".join(slide_texts)
+            else:
+                content_text = file_path.read_text(encoding="utf-8", errors="ignore")
+                passed.append("Plain text / CSV readable format")
+        except Exception as e:
+            failed.append(f"Format corruption or parser error: {str(e)}")
+
+        if required_sections and content_text:
+            for sec in required_sections:
+                if sec.lower() in content_text.lower():
+                    passed.append(f"Required section/tag verified: '{sec}'")
+                else:
+                    failed.append(f"Missing mandatory section/tag: '{sec}'")
 
         status = "PASS" if not failed else "FAIL"
         return VerificationResult(
             status=status,
             checks_passed=passed,
             checks_failed=failed,
-            details={"file_size": size, "path": str(file_path)},
+            details={"file_size": size, "path": str(file_path), "format": ext},
             can_retry=status == "FAIL",
+        )
+
+    def verify_rag_grounding(self, evidence_texts: List[str], response_text: str) -> VerificationResult:
+        """Verifies that RAG response is grounded in retrieved local documentation evidence."""
+        passed = []
+        failed = []
+
+        if not evidence_texts:
+            failed.append("No source document evidence was retrieved for grounding check.")
+            return VerificationResult("FAIL", passed, failed, {"evidence_count": 0}, can_retry=True)
+
+        passed.append(f"Source documentation retrieved ({len(evidence_texts)} chunks)")
+
+        # Verify key terms overlap
+        import re
+        resp_tokens = set(re.findall(r"\w{4,}", response_text.lower()))
+        evidence_all = " ".join(evidence_texts).lower()
+
+        grounded_tokens = [t for t in resp_tokens if t in evidence_all]
+        grounding_ratio = len(grounded_tokens) / max(1, len(resp_tokens))
+
+        if grounding_ratio >= 0.35:
+            passed.append(f"Response vocabulary grounded in source evidence ({round(grounding_ratio * 100, 1)}% grounding)")
+            status = "PASS"
+        else:
+            failed.append(f"Response shows low grounding overlap ({round(grounding_ratio * 100, 1)}%) with source SOPs")
+            status = "NEEDS_HUMAN_REVIEW"
+
+        return VerificationResult(
+            status=status,
+            checks_passed=passed,
+            checks_failed=failed,
+            details={"grounding_ratio": round(grounding_ratio, 3), "evidence_count": len(evidence_texts)},
+        )
+
+    def verify_vision_extraction(self, detected_components: List[Dict[str, Any]], expected_types: Optional[List[str]] = None) -> VerificationResult:
+        """Verifies that vision extraction detected valid engineering diagram components."""
+        passed = []
+        failed = []
+
+        if not detected_components:
+            failed.append("No engineering components detected in diagram.")
+            return VerificationResult("FAIL", passed, failed, {"detected_count": 0}, can_retry=True)
+
+        passed.append(f"Detected {len(detected_components)} diagram components/tags")
+
+        if expected_types:
+            found_types = {str(c.get("type", "")).lower() for c in detected_components}
+            for exp in expected_types:
+                if exp.lower() in found_types:
+                    passed.append(f"Expected component type verified: '{exp}'")
+                else:
+                    failed.append(f"Expected component type not detected: '{exp}'")
+
+        status = "PASS" if not failed else "RETRY"
+        return VerificationResult(
+            status=status,
+            checks_passed=passed,
+            checks_failed=failed,
+            details={"components_count": len(detected_components)},
+            can_retry=status == "RETRY",
         )
 
     def verify_engineering_physics(self, findings: Dict[str, Any]) -> VerificationResult:

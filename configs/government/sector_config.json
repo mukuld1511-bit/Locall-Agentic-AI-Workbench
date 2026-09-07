@@ -1,0 +1,60 @@
+{
+    "sector_name": "Sovereign Government & Public Sector",
+    "organization": "Government of India / State Government Departments",
+    "description": "Configuration profile for sovereign AI operations in government departments, defense procurement logistics, and public sector undertakings requiring classified document handling.",
+    "compliance_standards": [
+        "Official Secrets Act 1923",
+        "IT Act 2000 (Amended 2008)",
+        "Government e-Office Framework",
+        "NIC Cloud Guidelines",
+        "CCA (Controller of Certifying Authorities) Standards",
+        "MeitY Cyber Security Framework",
+        "DPIIT Data Protection Guidelines",
+        "Right to Information Act 2005",
+        "General Financial Rules 2017 (GFR)",
+        "Central Vigilance Commission Guidelines"
+    ],
+    "equipment_types": [
+        "Secure Communication Terminal",
+        "Document Management System",
+        "e-Office Node",
+        "Biometric Authentication Device",
+        "Network Security Appliance",
+        "Data Center Server",
+        "Disaster Recovery Node",
+        "Video Conferencing Unit (Classified)",
+        "PKI Token Device"
+    ],
+    "risk_overrides": {
+        "classified_document_access": "CRITICAL",
+        "inter_department_transfer": "HIGH",
+        "budget_approval_override": "CRITICAL",
+        "personnel_record_modification": "HIGH",
+        "audit_report_generation": "MEDIUM",
+        "public_disclosure": "CRITICAL"
+    },
+    "document_templates": [
+        "cabinet_note",
+        "procurement_approval",
+        "vigilance_clearance",
+        "budget_allocation_sheet",
+        "inter_departmental_memo",
+        "classified_briefing_note",
+        "RTI_response_draft"
+    ],
+    "mandatory_sections": [
+        "File Number",
+        "Department",
+        "Classification Level",
+        "Originating Authority",
+        "Compliance Reference",
+        "Approval Authority",
+        "Date of Issuance"
+    ],
+    "default_role_mappings": {
+        "GRADE_1": "Section Officer / Junior Assistant",
+        "GRADE_2": "Under Secretary / Deputy Director",
+        "GRADE_3": "Joint Secretary / Director",
+        "ADMIN": "Additional Secretary / Chief Information Security Officer"
+    }
+}

@@ -660,37 +660,40 @@ if QT_AVAILABLE:
                 QMessageBox.critical(self, "Integrity Failure", f"Tamper detected: {res['error']}")
 
         def refresh_admin_tables(self):
-            # Users
-            with DB.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT username, full_name, department, role, is_active FROM users")
-                users = cursor.fetchall()
-                self.users_table.setRowCount(len(users))
-                for row, u in enumerate(users):
-                    self.users_table.setItem(row, 0, QTableWidgetItem(u["username"]))
-                    self.users_table.setItem(row, 1, QTableWidgetItem(u["full_name"]))
-                    self.users_table.setItem(row, 2, QTableWidgetItem(u["department"]))
-                    self.users_table.setItem(row, 3, QTableWidgetItem(u["role"]))
-                    self.users_table.setItem(row, 4, QTableWidgetItem("ACTIVE" if u["is_active"] else "LOCKED"))
+            # Users - matches actual schema: users table has 'status' column
+            try:
+                with DB.get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT username, full_name, department, role, status FROM users")
+                    users = cursor.fetchall()
+                    self.users_table.setRowCount(len(users))
+                    for row, u in enumerate(users):
+                        self.users_table.setItem(row, 0, QTableWidgetItem(u["username"]))
+                        self.users_table.setItem(row, 1, QTableWidgetItem(u["full_name"]))
+                        self.users_table.setItem(row, 2, QTableWidgetItem(u["department"]))
+                        self.users_table.setItem(row, 3, QTableWidgetItem(u["role"]))
+                        self.users_table.setItem(row, 4, QTableWidgetItem(u["status"]))
 
-                # Policies
-                cursor.execute("SELECT policy_id, description, effect, min_role, is_active FROM policies")
-                policies = cursor.fetchall()
-                self.policies_table.setRowCount(len(policies))
-                for row, p in enumerate(policies):
-                    self.policies_table.setItem(row, 0, QTableWidgetItem(p["policy_id"]))
-                    self.policies_table.setItem(row, 1, QTableWidgetItem(p["description"]))
-                    self.policies_table.setItem(row, 2, QTableWidgetItem(p["effect"]))
-                    self.policies_table.setItem(row, 3, QTableWidgetItem(p["min_role"]))
-                    self.policies_table.setItem(row, 4, QTableWidgetItem("ACTIVE" if p["is_active"] else "DISABLED"))
+                    # Policies - matches actual schema: policies table has name, decision, role
+                    cursor.execute("SELECT policy_id, name, decision, role, conditions FROM policies")
+                    policies = cursor.fetchall()
+                    self.policies_table.setRowCount(len(policies))
+                    for row, p in enumerate(policies):
+                        self.policies_table.setItem(row, 0, QTableWidgetItem(p["policy_id"]))
+                        self.policies_table.setItem(row, 1, QTableWidgetItem(p["name"]))
+                        self.policies_table.setItem(row, 2, QTableWidgetItem(p["decision"]))
+                        self.policies_table.setItem(row, 3, QTableWidgetItem(p["role"]))
+                        self.policies_table.setItem(row, 4, QTableWidgetItem("ACTIVE"))
+            except Exception:
+                pass
 
-            # Models
+            # Models - list_workers() returns dicts with worker_type, model_name, capabilities, vram, license
             workers = MODEL_MGR.registry.list_workers()
             self.models_table.setRowCount(len(workers))
             for row, w in enumerate(workers):
                 self.models_table.setItem(row, 0, QTableWidgetItem(w["worker_type"]))
                 self.models_table.setItem(row, 1, QTableWidgetItem(w["model_name"]))
-                self.models_table.setItem(row, 2, QTableWidgetItem(w["quantization"]))
+                self.models_table.setItem(row, 2, QTableWidgetItem(f"{w.get('vram_required_mb', 0)} MB VRAM"))
                 is_loaded = MODEL_MGR.is_loaded(w["worker_type"])
                 self.models_table.setItem(row, 3, QTableWidgetItem("RESIDENT (ACTIVE)" if is_loaded else "STANDBY (LOCAL DISK)"))
                 self.models_table.setItem(row, 4, QTableWidgetItem("PINNED" if w["worker_type"] == "organizer" else "AUTO-SWAP ON DEMAND"))

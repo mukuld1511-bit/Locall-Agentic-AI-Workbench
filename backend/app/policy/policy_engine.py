@@ -17,6 +17,7 @@ Principle:
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from backend.app.core.config import GLOBAL_CONFIG
 from backend.app.database.db import DB
@@ -189,6 +190,94 @@ class PolicyEngine:
             request_id=request_id,
             details={"risk_level": risk, "reason": reason},
         )
+
+    def create_approval_request(self, request_id: str, user_id: str, action: str, resource: str, reason: str) -> str:
+        """Creates an approval request in the database and records audit trail."""
+        import uuid
+        approval_id = f"appr_{uuid.uuid4().hex[:8]}"
+        now = datetime.now(timezone.utc).isoformat()
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO approvals (approval_id, request_id, user_id, action, resource, reason, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?)
+                """,
+                (approval_id, request_id, user_id, action, resource, reason, now),
+            )
+            conn.commit()
+
+        AUDIT.log_event(
+            event_type="APPROVAL_REQUESTED",
+            action=action,
+            status="PENDING",
+            user_id=user_id,
+            resource=resource,
+            request_id=request_id,
+            details={"approval_id": approval_id, "reason": reason},
+        )
+        return approval_id
+
+    def review_approval(self, approval_id: str, reviewer_id: str, reviewer_role: str, decision: str, comment: str = "") -> Dict[str, Any]:
+        """Authorized human reviews (APPROVE / REJECT) a pending high-risk approval."""
+        decision_upper = decision.upper()
+        if decision_upper not in ["APPROVE", "REJECT", "APPROVED", "REJECTED"]:
+            return {"success": False, "error": "Decision must be APPROVE or REJECT."}
+
+        # RBAC validation: Reviewing requires ADMIN or GRADE_3
+        if reviewer_role.upper() not in ["ADMIN", "GRADE_3"]:
+            return {"success": False, "error": "Insufficient privileges to review approval requests."}
+
+        final_status = "APPROVED" if decision_upper in ["APPROVE", "APPROVED"] else "REJECTED"
+        now = datetime.now(timezone.utc).isoformat()
+
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM approvals WHERE approval_id = ?", (approval_id,))
+            req = cursor.fetchone()
+            if not req:
+                return {"success": False, "error": "Approval request not found."}
+            if req["status"] != "PENDING":
+                return {"success": False, "error": f"Approval request already finalized as {req['status']}."}
+
+            cursor.execute(
+                """
+                UPDATE approvals SET status = ?, reviewer_id = ?, decision_timestamp = ?
+                WHERE approval_id = ?
+                """,
+                (final_status, reviewer_id, now, approval_id),
+            )
+            conn.commit()
+
+        audit_event = "APPROVAL_APPROVED" if final_status == "APPROVED" else "APPROVAL_REJECTED"
+        AUDIT.log_event(
+            event_type=audit_event,
+            action=req["action"],
+            status=final_status,
+            user_id=reviewer_id,
+            role=reviewer_role,
+            resource=req["resource"],
+            request_id=req["request_id"],
+            details={"approval_id": approval_id, "comment": comment, "original_requester": req["user_id"]},
+        )
+
+        return {"success": True, "approval_id": approval_id, "status": final_status, "reviewer_id": reviewer_id}
+
+    def get_pending_approvals(self) -> List[Dict[str, Any]]:
+        """Returns all pending human approvals for administrators/superintendents."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM approvals WHERE status = 'PENDING' ORDER BY created_at DESC")
+            rows = cursor.fetchall()
+            return [dict(r) for r in rows]
+
+    def get_approval_by_request_id(self, request_id: str) -> Optional[Dict[str, Any]]:
+        """Finds approval request associated with a specific request_id."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM approvals WHERE request_id = ? ORDER BY created_at DESC LIMIT 1", (request_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
 
 
 POLICY = PolicyEngine()

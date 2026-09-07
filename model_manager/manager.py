@@ -24,6 +24,9 @@ class ModelManager:
         self.vram_budget_mb = GLOBAL_CONFIG.VRAM_BUDGET_MB - GLOBAL_CONFIG.VRAM_RESERVE_MB  # e.g. 7168 MB
         self.lock = threading.RLock()
         self.active_workers: Dict[str, WorkerModelDefinition] = {}
+        self.model_states: Dict[str, str] = {
+            w["worker_type"]: "UNLOADED" for w in self.registry.list_workers()
+        }
         self.metrics = {
             "swaps_count": 0,
             "reuses_count": 0,
@@ -32,6 +35,19 @@ class ModelManager:
         }
         # Pre-warm organizer by default (essential lightweight controller)
         self.load_worker("organizer")
+
+    def _set_model_state(self, worker_type: str, state: str) -> None:
+        """Sets model state in state machine (UNLOADED -> LOADING -> READY -> RUNNING -> IDLE -> UNLOADING -> UNLOADED)."""
+        worker = self.registry.get_worker(worker_type)
+        key = worker.worker_type if worker else worker_type.lower()
+        self.model_states[key] = state
+
+    def get_model_state(self, worker_type: str) -> str:
+        """Returns the current state machine state of a model."""
+        with self.lock:
+            worker = self.registry.get_worker(worker_type)
+            key = worker.worker_type if worker else worker_type.lower()
+            return self.model_states.get(key, "UNLOADED")
 
     def get_current_vram_used(self) -> int:
         with self.lock:
@@ -46,16 +62,21 @@ class ModelManager:
 
     def load_worker(self, worker_type: str) -> bool:
         """Loads worker into memory, swapping out idle workers if VRAM budget exceeded."""
-        worker_type = worker_type.lower()
         with self.lock:
             worker = self.registry.get_worker(worker_type)
             if not worker or not worker.adapter:
                 return False
 
+            canonical_type = worker.worker_type
+
             if worker.adapter.is_loaded():
-                self.active_workers[worker_type] = worker
+                self.active_workers[canonical_type] = worker
                 self.metrics["reuses_count"] += 1
+                self._set_model_state(canonical_type, "READY")
                 return True
+
+            # State transition: LOADING
+            self._set_model_state(canonical_type, "LOADING")
 
             # Check if loading exceeds budget
             current_vram = self.get_current_vram_used()
@@ -66,6 +87,7 @@ class ModelManager:
                 evicted = self._evict_workers_for_budget(required_vram)
                 if not evicted and (self.get_current_vram_used() + required_vram) > self.vram_budget_mb:
                     # Could not free enough memory
+                    self._set_model_state(canonical_type, "UNLOADED")
                     return False
 
             # Perform load
@@ -74,37 +96,50 @@ class ModelManager:
             load_latency = (time.time() - start_load) * 1000.0
 
             if success:
-                self.active_workers[worker_type] = worker
+                self.active_workers[canonical_type] = worker
                 self.metrics["total_load_time_ms"] += load_latency
+                self._set_model_state(canonical_type, "READY")
                 AUDIT.log_event(
                     event_type="MODEL_LOADED",
                     action="load_worker",
                     status="SUCCESS",
                     resource=f"model:{worker.model_name}",
                     details={
-                        "worker_type": worker_type,
+                        "worker_type": canonical_type,
                         "vram_mb": worker.vram_required_mb,
                         "load_latency_ms": round(load_latency, 2),
                         "total_vram_used_mb": self.get_current_vram_used(),
+                        "state": "READY",
                     },
                 )
                 return True
-            return False
+            else:
+                self._set_model_state(canonical_type, "UNLOADED")
+                return False
 
     def unload_worker(self, worker_type: str) -> bool:
         """Unloads worker from memory."""
-        worker_type = worker_type.lower()
         with self.lock:
             worker = self.registry.get_worker(worker_type)
             if not worker or not worker.adapter or not worker.adapter.is_loaded():
+                if worker:
+                    self._set_model_state(worker.worker_type, "UNLOADED")
                 return True
+
+            canonical_type = worker.worker_type
+
+            # State transition: UNLOADING
+            self._set_model_state(canonical_type, "UNLOADING")
 
             start_unload = time.time()
             worker.adapter.unload()
             unload_latency = (time.time() - start_unload) * 1000.0
 
-            if worker_type in self.active_workers:
-                del self.active_workers[worker_type]
+            if canonical_type in self.active_workers:
+                del self.active_workers[canonical_type]
+
+            # State transition: UNLOADED
+            self._set_model_state(canonical_type, "UNLOADED")
 
             AUDIT.log_event(
                 event_type="MODEL_UNLOADED",
@@ -112,10 +147,11 @@ class ModelManager:
                 status="SUCCESS",
                 resource=f"model:{worker.model_name}",
                 details={
-                    "worker_type": worker_type,
+                    "worker_type": canonical_type,
                     "freed_vram_mb": worker.vram_required_mb,
                     "unload_latency_ms": round(unload_latency, 2),
                     "remaining_vram_mb": self.get_current_vram_used(),
+                    "state": "UNLOADED",
                 },
             )
             return True
@@ -175,8 +211,14 @@ class ModelManager:
                 details={"worker_type": worker_type},
             )
 
+            canonical_type = worker.worker_type
+            self._set_model_state(canonical_type, "RUNNING")
+
             start_infer = time.time()
-            resp = worker.adapter.generate(prompt, system_prompt, **kwargs)
+            try:
+                resp = worker.adapter.generate(prompt, system_prompt, **kwargs)
+            finally:
+                self._set_model_state(canonical_type, "IDLE")
             infer_latency = (time.time() - start_infer) * 1000.0
 
             self.metrics["total_inference_time_ms"] += infer_latency

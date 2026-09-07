@@ -1,0 +1,59 @@
+{
+    "sector_name": "Power & Water Utilities",
+    "organization": "National Thermal Power Corporation / Municipal Water Authority",
+    "description": "Configuration profile for sovereign AI operations in power generation, transmission, and municipal water treatment facilities.",
+    "compliance_standards": [
+        "IS 4029:2010 (Guide for Testing Rotating Machinery)",
+        "IS 11171:2016 (Steam Turbine Governors)",
+        "IS 325:1996 (Three Phase Induction Motors)",
+        "CPHEEO Manual on Water Supply",
+        "CEA Technical Standards",
+        "IS 1172:1993 (Basic Requirements for Water Supply)",
+        "CPCB Effluent Standards",
+        "National Electricity Rules 2005"
+    ],
+    "equipment_types": [
+        "Steam Turbine",
+        "Generator",
+        "Transformer",
+        "Circuit Breaker",
+        "Boiler Feed Pump",
+        "Cooling Tower",
+        "Condenser",
+        "Water Treatment Plant",
+        "Raw Water Intake",
+        "Clarifier",
+        "Filter Bed",
+        "Chlorination Unit",
+        "Distribution Pump",
+        "SCADA Controller"
+    ],
+    "risk_overrides": {
+        "turbine_parameter_change": "CRITICAL",
+        "generator_load_shed": "HIGH",
+        "water_chlorination_override": "CRITICAL",
+        "transformer_tap_change": "HIGH",
+        "pump_speed_override": "MEDIUM"
+    },
+    "document_templates": [
+        "turbine_inspection_note",
+        "transformer_oil_analysis",
+        "water_quality_report",
+        "generator_performance_log",
+        "boiler_efficiency_sheet"
+    ],
+    "mandatory_sections": [
+        "Equipment Tag",
+        "Inspection Standard",
+        "Operational Parameters",
+        "Compliance Status",
+        "Safety Assessment",
+        "Approval Sign-off"
+    ],
+    "default_role_mappings": {
+        "GRADE_1": "Field Operator / Meter Reader",
+        "GRADE_2": "Station Engineer / Plant Chemist",
+        "GRADE_3": "Chief Engineer / Plant Superintendent",
+        "ADMIN": "General Manager (Technical) / System Administrator"
+    }
+}

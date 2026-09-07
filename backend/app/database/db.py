@@ -121,6 +121,18 @@ class DatabaseManager:
             )
             """)
 
+            # 5b. Document Permissions Table
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS document_permissions (
+                permission_id TEXT PRIMARY KEY,
+                doc_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                can_read INTEGER NOT NULL DEFAULT 1,
+                can_export INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (doc_id) REFERENCES documents (doc_id) ON DELETE CASCADE
+            )
+            """)
+
             # 6. Audit Trail Table (tamper-evident hash chain)
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS audit_events (
@@ -209,6 +221,23 @@ class DatabaseManager:
                 verification_status TEXT, -- PASS, FAIL, RETRY, NEEDS_HUMAN_REVIEW
                 latency_ms REAL DEFAULT 0.0,
                 FOREIGN KEY (run_id) REFERENCES workflow_runs (run_id) ON DELETE CASCADE
+            )
+            """)
+
+            # 11. Tool Calls Table
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tool_calls (
+                call_id TEXT PRIMARY KEY,
+                request_id TEXT,
+                user_id TEXT,
+                role TEXT,
+                tool_name TEXT NOT NULL,
+                arguments TEXT,
+                status TEXT NOT NULL, -- SUCCESS, BLOCKED, FAILED
+                output TEXT,
+                duration_ms REAL DEFAULT 0.0,
+                risk_level TEXT,
+                created_at TEXT NOT NULL
             )
             """)
 

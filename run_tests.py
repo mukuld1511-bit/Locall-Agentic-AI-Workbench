@@ -32,6 +32,8 @@ def run_all_tests():
         "tests.test_model_manager",
         "tests.test_tool_gateway",
         "tests.test_rag_security",
+        "tests.test_human_approval",
+        "tests.test_verification_engine",
         "tests.test_e2e_workflows",
     ]
 
@@ -47,10 +49,10 @@ def run_all_tests():
 
     print("=" * 80)
     if result.wasSuccessful():
-        print("[✔] ALL TESTS PASSED SUCCESSFULLY! The software platform is verified and ready.")
+        print("[OK] ALL TESTS PASSED SUCCESSFULLY! The software platform is verified and ready.")
         return 0
     else:
-        print(f"[✘] TESTS FAILED: {len(result.failures)} failures, {len(result.errors)} errors.")
+        print(f"[FAILED] TESTS FAILED: {len(result.failures)} failures, {len(result.errors)} errors.")
         return 1
 
 

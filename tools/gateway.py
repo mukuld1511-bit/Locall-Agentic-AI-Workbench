@@ -10,7 +10,11 @@ THE LLM NEVER EXECUTES ARBITRARY SHELL STRINGS.
 """
 
 import time
+import json
+import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+from backend.app.database.db import DB
 from backend.app.audit.audit_service import AUDIT
 from backend.app.policy.policy_engine import POLICY
 from backend.app.rbac.rbac_service import RBAC
@@ -142,6 +146,38 @@ class ToolGateway:
             )
         )
 
+        # 8. file_write
+        self.registry.register(
+            ToolDefinition(
+                name="file_write",
+                description="Safely writes deliverable or artifact content within authorized directory.",
+                input_schema={"type": "object", "properties": {"file_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["file_path", "content"]},
+                output_schema={"type": "object", "properties": {"path": {"type": "string"}, "size_bytes": {"type": "integer"}}},
+                required_permissions=["DOC_GENERATE_OFFICE"],
+                risk_level="MEDIUM",
+                audit_category="FILE_OPERATION",
+                timeout_seconds=5,
+                network_required=False,
+                implementation=lambda file_path, content, **kw: safe_file_write(file_path, content),
+            )
+        )
+
+        # 9. doc_search (alias to rag_search)
+        self.registry.register(
+            ToolDefinition(
+                name="doc_search",
+                description="Searches local sovereign documentation catalogue.",
+                input_schema={"type": "object", "properties": {"query": {"type": "string"}, "top_k": {"type": "integer"}}, "required": ["query"]},
+                output_schema={"type": "object", "properties": {"results": {"type": "array"}}},
+                required_permissions=["DOC_SEARCH_PUBLIC"],
+                risk_level="LOW",
+                audit_category="KNOWLEDGE_RETRIEVAL",
+                timeout_seconds=10,
+                network_required=False,
+                implementation=self._exec_rag_search,
+            )
+        )
+
     def _exec_doc_generate(self, artifact_format: str, equipment_tag: str, data: Dict[str, Any], requester: str = "Engineer", **kw) -> Dict[str, Any]:
         fmt = artifact_format.lower()
         if "docx" in fmt or "word" in fmt or "note" in fmt:
@@ -239,6 +275,18 @@ class ToolGateway:
                 details={"latency_ms": round(latency_ms, 2), "risk_level": tool.risk_level},
             )
 
+            self._record_tool_call(
+                request_id=request_id,
+                user_id=user_id,
+                role=role,
+                tool_name=tool_name,
+                arguments=arguments,
+                status="SUCCESS" if result.get("success", True) else "FAILED",
+                output=result,
+                duration_ms=latency_ms,
+                risk_level=tool.risk_level,
+            )
+
             return {
                 "success": True,
                 "tool_name": tool_name,
@@ -257,7 +305,51 @@ class ToolGateway:
                 request_id=request_id,
                 details={"error": str(e), "latency_ms": round(latency_ms, 2)},
             )
+            self._record_tool_call(
+                request_id=request_id,
+                user_id=user_id,
+                role=role,
+                tool_name=tool_name,
+                arguments=arguments,
+                status="FAILED",
+                output=str(e),
+                duration_ms=latency_ms,
+                risk_level=tool.risk_level,
+            )
             return {"success": False, "error": f"Tool execution failed: {str(e)}"}
+
+    def _record_tool_call(
+        self,
+        request_id: Optional[str],
+        user_id: str,
+        role: str,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        status: str,
+        output: Any,
+        duration_ms: float,
+        risk_level: str,
+    ) -> None:
+        try:
+            call_id = f"call_{uuid.uuid4().hex[:10]}"
+            now = datetime.now(timezone.utc).isoformat()
+            with DB.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    INSERT INTO tool_calls (call_id, request_id, user_id, role, tool_name, arguments, status, output, duration_ms, risk_level, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        call_id, request_id, user_id, role, tool_name,
+                        json.dumps(arguments, default=str), status,
+                        json.dumps(output, default=str) if isinstance(output, (dict, list)) else str(output)[:500],
+                        duration_ms, risk_level, now,
+                    ),
+                )
+                conn.commit()
+        except Exception:
+            pass
 
 
 TOOL_GATEWAY = ToolGateway()
