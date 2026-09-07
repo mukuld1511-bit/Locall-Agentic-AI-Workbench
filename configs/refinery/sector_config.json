@@ -1,0 +1,56 @@
+{
+  "sector": "refinery",
+  "organization": "Mangalore Refinery and Petrochemicals Limited (MRPL)",
+  "problem_statement_id": "SIH26117",
+  "document_classifications": [
+    {
+      "level": "PUBLIC_INTERNAL",
+      "description": "Standard refinery SOPs, equipment general manuals, and unclassified plant bulletins",
+      "permitted_roles": ["GRADE_1", "GRADE_2", "GRADE_3", "ADMIN"]
+    },
+    {
+      "level": "ROLE_RESTRICTED",
+      "description": "Inspection reports, maintenance work orders, thickness logs, and calibration data",
+      "permitted_roles": ["GRADE_2", "GRADE_3", "ADMIN"]
+    },
+    {
+      "level": "CONFIDENTIAL",
+      "description": "Safety Interlock matrices, emergency depressurization limits, and P&ID engineering diagrams",
+      "permitted_roles": ["GRADE_3", "ADMIN"]
+    },
+    {
+      "level": "HIGHLY_CONFIDENTIAL",
+      "description": "Proprietary catalyst regeneration formulations, crude assay recipes, and economic blend models",
+      "permitted_roles": ["GRADE_3", "ADMIN"],
+      "requires_approval_for_download": true
+    }
+  ],
+  "roles_mapping": {
+    "GRADE_1": {
+      "title": "Field Operator / Junior Technician",
+      "max_risk_level": "LOW",
+      "allowed_tools": ["file_read", "rag_search", "ocr"]
+    },
+    "GRADE_2": {
+      "title": "Process & Reliability Engineer",
+      "max_risk_level": "MEDIUM",
+      "allowed_tools": ["file_read", "rag_search", "ocr", "vision_analyze", "sandbox_exec", "spreadsheet_read", "doc_generate"]
+    },
+    "GRADE_3": {
+      "title": "Plant Superintendent / Chief Engineer",
+      "max_risk_level": "HIGH",
+      "allowed_tools": ["file_read", "rag_search", "ocr", "vision_analyze", "sandbox_exec", "spreadsheet_read", "doc_generate", "parameter_override_sim"]
+    },
+    "ADMIN": {
+      "title": "Industrial Cyber-Security & Systems Administrator",
+      "max_risk_level": "CRITICAL",
+      "allowed_tools": ["file_read", "rag_search", "admin_user_manage", "admin_policy_manage", "admin_model_manage", "admin_audit_inspect"]
+    }
+  },
+  "standards": [
+    "API 510 - Pressure Vessel Inspection Code",
+    "API 570 - Piping Inspection Code",
+    "OISD-STD-129 - Inspection of Storage Tanks",
+    "MRPL-SOP-HEX-042 - Heat Exchanger Maintenance Protocol"
+  ]
+}

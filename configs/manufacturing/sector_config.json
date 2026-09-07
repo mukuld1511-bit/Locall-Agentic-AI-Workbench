@@ -1,0 +1,32 @@
+{
+  "sector": "manufacturing",
+  "organization": "Precision Industrial Manufacturing Facility",
+  "document_classifications": [
+    {
+      "level": "PUBLIC_INTERNAL",
+      "description": "General workshop safety, machine operating instructions, tooling catalogues",
+      "permitted_roles": ["GRADE_1", "GRADE_2", "GRADE_3", "ADMIN"]
+    },
+    {
+      "level": "ROLE_RESTRICTED",
+      "description": "CNC program parameters, tolerance sheets, daily production outputs",
+      "permitted_roles": ["GRADE_2", "GRADE_3", "ADMIN"]
+    },
+    {
+      "level": "CONFIDENTIAL",
+      "description": "Proprietary component CAD/CAM blueprints, supplier cost breakdowns",
+      "permitted_roles": ["GRADE_3", "ADMIN"]
+    },
+    {
+      "level": "HIGHLY_CONFIDENTIAL",
+      "description": "Defence-grade alloy heat treatment parameters and patent-pending tooling designs",
+      "permitted_roles": ["GRADE_3", "ADMIN"]
+    }
+  ],
+  "roles_mapping": {
+    "GRADE_1": {"title": "Line Technician", "max_risk_level": "LOW"},
+    "GRADE_2": {"title": "Manufacturing Engineer", "max_risk_level": "MEDIUM"},
+    "GRADE_3": {"title": "Plant Operations Director", "max_risk_level": "HIGH"},
+    "ADMIN": {"title": "Security Administrator", "max_risk_level": "CRITICAL"}
+  }
+}
