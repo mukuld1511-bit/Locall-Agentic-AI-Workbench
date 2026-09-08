@@ -20,7 +20,7 @@ class WorkbenchConfig:
     TARGET_DEVICE: str = AUTO_HARDWARE.device_name
     VRAM_BUDGET_MB: int = AUTO_HARDWARE.total_vram_mb
     SYSTEM_RAM_BUDGET_MB: int = AUTO_HARDWARE.system_ram_mb
-    VRAM_RESERVE_MB: int = 1024  # reserved for display & OS
+    VRAM_RESERVE_MB: int = 1024  # generic safety reserve
     
     # Paths
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent.parent

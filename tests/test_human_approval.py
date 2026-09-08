@@ -19,6 +19,110 @@ class TestHumanApprovalWorkflow(unittest.TestCase):
     def setUp(self):
         DB.init_schema()
 
+        # Deterministic test fixtures.
+        # Upsert by USERNAME because username is UNIQUE in the database.
+        test_users = [
+            ("usr_eng202", "eng202", "Test Engineer", "Engineering", "GRADE_2"),
+            ("usr_admin", "admin", "Test Admin", "Administration", "ADMIN"),
+            ("usr_op101", "op101", "Test Operator", "Operations", "GRADE_1"),
+            ("usr_super303", "super303", "Test Superintendent", "Inspection", "GRADE_3"),
+        ]
+
+        with DB.get_connection() as conn:
+            cur = conn.cursor()
+
+            for user_id, username, full_name, department, role in test_users:
+                cur.execute(
+                    "SELECT user_id FROM users WHERE username = ?",
+                    (username,),
+                )
+                existing = cur.fetchone()
+
+                if existing:
+                    existing_id = existing["user_id"]
+
+                    # Make sure the required deterministic user_id is available.
+                    if existing_id != user_id:
+                        cur.execute(
+                            "SELECT 1 FROM users WHERE user_id = ?",
+                            (user_id,),
+                        )
+                        id_owner = cur.fetchone()
+
+                        if id_owner:
+                            # Remove stale test fixture occupying the target ID.
+                            cur.execute(
+                                "DELETE FROM users WHERE user_id = ?",
+                                (user_id,),
+                            )
+
+                    cur.execute(
+                        """
+                        UPDATE users
+                        SET user_id = ?,
+                            full_name = ?,
+                            department = ?,
+                            role = ?,
+                            status = 'ACTIVE',
+                            failed_attempts = 0,
+                            locked_until = NULL
+                        WHERE username = ?
+                        """,
+                        (
+                            user_id,
+                            full_name,
+                            department,
+                            role,
+                            username,
+                        ),
+                    )
+                else:
+                    # Make sure target user_id is free before insertion.
+                    cur.execute(
+                        "DELETE FROM users WHERE user_id = ?",
+                        (user_id,),
+                    )
+
+                    cur.execute(
+                        """
+                        INSERT INTO users (
+                            user_id, username, full_name, email, department, role,
+                            password_hash, salt, status, failed_attempts, locked_until,
+                            created_at, updated_at
+                        )
+                        VALUES (
+                            ?, ?, ?, ?, ?, ?, ?, ?,
+                            'ACTIVE', 0, NULL, datetime('now'), datetime('now')
+                        )
+                        """,
+                        (
+                            user_id,
+                            username,
+                            full_name,
+                            f"{username}@test.local",
+                            department,
+                            role,
+                            "TEST_PASSWORD_HASH",
+                            "TEST_SALT",
+                        ),
+                    )
+
+            conn.commit()
+
+        # Verify the fixtures are exactly what the tests expect.
+        with DB.get_connection() as conn:
+            cur = conn.cursor()
+            for user_id, username, _, _, role in test_users:
+                cur.execute(
+                    "SELECT user_id, username, role FROM users WHERE user_id = ?",
+                    (user_id,),
+                )
+                row = cur.fetchone()
+                if not row or row["username"] != username or row["role"] != role:
+                    raise RuntimeError(
+                        f"Test fixture setup failed for {user_id}: {row}"
+                    )
+
     def test_high_risk_action_triggers_approval_required(self):
         """Grade 3 attempting equipment parameter override should trigger APPROVAL_REQUIRED."""
         result = POLICY.evaluate(
@@ -143,7 +247,7 @@ class TestHumanApprovalWorkflow(unittest.TestCase):
     def test_approval_creates_audit_trail(self):
         """Each approval action should generate audit events."""
         initial_events = AUDIT.get_recent_events(limit=100)
-        initial_count = len(initial_events)
+        initial_ids = {e["event_id"] for e in initial_events}
 
         approval_id = POLICY.create_approval_request(
             request_id="req_audit_trail",
@@ -154,12 +258,20 @@ class TestHumanApprovalWorkflow(unittest.TestCase):
         )
         POLICY.review_approval(approval_id, "usr_admin", "ADMIN", "APPROVE")
 
-        final_events = AUDIT.get_recent_events(limit=100)
-        # Should have at least 2 new events: APPROVAL_REQUESTED + APPROVAL_APPROVED
-        self.assertGreater(len(final_events), initial_count)
+        # Fetch a larger window because the audit API intentionally limits
+        # the number of returned records.
+        final_events = AUDIT.get_recent_events(limit=1000)
 
-        # Check for approval-related event types
-        event_types = [e["event_type"] for e in final_events]
+        new_events = [
+            e for e in final_events
+            if e["event_id"] not in initial_ids
+        ]
+
+        # Approval lifecycle must create at least two new audit events:
+        # APPROVAL_REQUESTED + APPROVAL_APPROVED.
+        self.assertGreaterEqual(len(new_events), 2)
+
+        event_types = [e["event_type"] for e in new_events]
         self.assertIn("APPROVAL_REQUESTED", event_types)
         self.assertIn("APPROVAL_APPROVED", event_types)
 

@@ -116,6 +116,10 @@ class AuditService:
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
 
+    def get_recent_events(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Compatibility helper returning the newest audit events."""
+        return self.get_events(limit=limit)
+
     def verify_integrity(self) -> Dict[str, Any]:
         """Verifies the SHA-256 hash-chain across all recorded audit entries."""
         with self.db.get_connection() as conn:
