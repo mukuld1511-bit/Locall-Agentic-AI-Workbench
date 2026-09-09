@@ -1,20 +1,16 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Minimal Native PySide6 GUI
 
-# Run and deploy your AI Studio app
+Native desktop GUI for the Local Sovereign Agentic AI Workbench.
 
-This contains everything you need to run your app locally.
+Uses only Python + PySide6 + the existing local backend services.
 
-View your app in AI Studio: https://ai.studio/apps/93c5259c-147f-49e7-81f9-ccacdf0d505a
+Screens:
+- Login
+- Chat / Task
+- Files
+- Workflow
+- Models
+- Audit
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Run from the repository root:
+`python3 -m desktop_gui.main`

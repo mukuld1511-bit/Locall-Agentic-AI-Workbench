@@ -1,0 +1,375 @@
+from __future__ import annotations
+
+import os, sys, uuid, subprocess
+from pathlib import Path
+from typing import Optional, Any
+
+from PySide6.QtCore import QObject, QThread, Signal, Qt
+from PySide6.QtWidgets import (
+    QApplication,QComboBox,QFileDialog,QFrame,QHBoxLayout,QLabel,QLineEdit,
+    QListWidget,QListWidgetItem,QMainWindow,QMessageBox,QPlainTextEdit,
+    QPushButton,QStackedWidget,QTableWidget,QTableWidgetItem,QVBoxLayout,
+    QWidget
+)
+
+from .styles import apply_app_style, MUTED, GOOD, BAD
+
+try:
+    from backend.app.auth.auth_service import AuthService
+except Exception:
+    AuthService = None
+
+try:
+    from backend.app.database.db import DB
+except Exception:
+    DB = None
+
+try:
+    from backend.app.workflows.workflow_engine import WORKFLOW_ENGINE
+except Exception:
+    WORKFLOW_ENGINE = None
+
+try:
+    from backend.app.audit.audit_service import AUDIT
+except Exception:
+    AUDIT = None
+
+try:
+    from model_manager.manager import MODEL_MGR
+except Exception:
+    MODEL_MGR = None
+
+
+def ensure_schema():
+    if DB:
+        try:
+            DB.init_schema()
+        except Exception:
+            pass
+
+
+def open_local_file(path: str):
+    try:
+        if sys.platform.startswith("linux"):
+            subprocess.Popen(["xdg-open", path])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        elif sys.platform.startswith("win"):
+            os.startfile(path)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
+class WorkflowWorker(QObject):
+    finished = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, task, user_id, role, session_id):
+        super().__init__()
+        self.task = task
+        self.user_id = user_id
+        self.role = role
+        self.session_id = session_id
+
+    def run(self):
+        try:
+            if WORKFLOW_ENGINE is None:
+                raise RuntimeError("Workflow Engine unavailable.")
+            state = WORKFLOW_ENGINE.execute_workflow(
+                task_description=self.task,
+                user_id=self.user_id,
+                role=self.role,
+                session_id=self.session_id,
+            )
+            self.finished.emit(state)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class LoginWidget(QWidget):
+    authenticated = Signal(dict)
+
+    def __init__(self):
+        super().__init__()
+        root = QHBoxLayout(self)
+        root.setContentsMargins(50,40,50,40)
+        root.setSpacing(28)
+
+        left = QFrame(); left.setObjectName("panel")
+        ll = QVBoxLayout(left); ll.setContentsMargins(28,28,28,28)
+        brand = QLabel("SOVEREIGN\nINDUSTRIAL AI\nWORKBENCH")
+        brand.setStyleSheet("font-size:28px;font-weight:700;")
+        ll.addWidget(brand)
+        sub = QLabel("LOCAL INTELLIGENCE FOR\nCONFIDENTIAL INDUSTRIAL OPERATIONS")
+        sub.setStyleSheet(f"color:{MUTED};font-size:12px;")
+        ll.addWidget(sub); ll.addStretch()
+        sec = QLabel("● LOCAL RUNTIME\n● SECURE SESSION\n● NO CLOUD DATA PATH")
+        sec.setStyleSheet(f"color:{GOOD};font-family:monospace;")
+        ll.addWidget(sec)
+
+        right = QFrame(); right.setObjectName("panel")
+        rl = QVBoxLayout(right); rl.setContentsMargins(30,30,30,30)
+        title=QLabel("Sign in"); title.setObjectName("title"); rl.addWidget(title)
+        rl.addWidget(QLabel("USERNAME"))
+        self.user=QLineEdit(); self.user.setPlaceholderText("Local username"); rl.addWidget(self.user)
+        rl.addWidget(QLabel("PASSWORD"))
+        self.pwd=QLineEdit(); self.pwd.setEchoMode(QLineEdit.Password); self.pwd.setPlaceholderText("Password"); rl.addWidget(self.pwd)
+        self.err=QLabel(); self.err.setStyleSheet(f"color:{BAD};"); self.err.setWordWrap(True); rl.addWidget(self.err)
+        btn=QPushButton("SIGN IN"); btn.setObjectName("primary"); btn.clicked.connect(self.login); rl.addWidget(btn)
+        rl.addStretch()
+
+        root.addWidget(left,1); root.addWidget(right,1)
+
+    def login(self):
+        ensure_schema()
+        if AuthService is None:
+            self.err.setText("Authentication service unavailable.")
+            return
+        try:
+            res=AuthService().login(self.user.text().strip(), self.pwd.text())
+            if res.get("success"):
+                self.authenticated.emit(res)
+            else:
+                self.err.setText(res.get("error","Invalid credentials"))
+        except Exception as exc:
+            self.err.setText(str(exc))
+
+
+class SovereignWorkbenchGUI(QMainWindow):
+    def __init__(self,user:Optional[dict]=None):
+        super().__init__()
+        self.user=user or {"user_id":"usr_local","username":"local","role":"GRADE_2"}
+        self.attached_file=None
+        self.current_state=None
+        self.setWindowTitle("Sovereign Industrial AI Workbench")
+        self.resize(1280,800)
+        self.build()
+
+    def panel(self):
+        f=QFrame(); f.setObjectName("panel"); return f
+
+    def build(self):
+        root=QWidget(); self.setCentralWidget(root)
+        shell=QVBoxLayout(root); shell.setContentsMargins(10,10,10,8); shell.setSpacing(8)
+        shell.addWidget(self.header())
+        body=QHBoxLayout(); body.setSpacing(8)
+        body.addWidget(self.sidebar())
+
+        self.pages=QStackedWidget()
+        self.pages.addWidget(self.chat_page())
+        self.pages.addWidget(self.files_page())
+        self.pages.addWidget(self.workflow_page())
+        self.pages.addWidget(self.models_page())
+        self.pages.addWidget(self.audit_page())
+        body.addWidget(self.pages,1)
+        shell.addLayout(body,1)
+
+        bottom=self.panel(); bl=QHBoxLayout(bottom)
+        self.status=QLabel("● LOCAL • READY"); self.status.setStyleSheet(f"color:{GOOD};font-family:monospace;")
+        bl.addWidget(self.status); bl.addStretch()
+        self.resource=QLabel(""); self.resource.setStyleSheet(f"color:{MUTED};font-family:monospace;")
+        bl.addWidget(self.resource); shell.addWidget(bottom)
+
+        self.refresh_all()
+
+    def header(self):
+        f=self.panel(); l=QHBoxLayout(f)
+        t=QLabel("SOVEREIGN INDUSTRIAL AI WORKBENCH"); t.setStyleSheet("font-weight:700;"); l.addWidget(t)
+        x=QLabel("● LOCAL"); x.setStyleSheet(f"color:{GOOD};font-weight:700;"); l.addWidget(x)
+        y=QLabel("● SECURE"); y.setStyleSheet(f"color:{GOOD};font-weight:700;"); l.addWidget(y)
+        l.addStretch()
+        l.addWidget(QLabel(f"{self.user.get('username','local')}  |  {self.user.get('role','UNKNOWN')}"))
+        return f
+
+    def sidebar(self):
+        f=self.panel(); f.setFixedWidth(165); l=QVBoxLayout(f)
+        h=QLabel("WORKBENCH"); h.setObjectName("section"); l.addWidget(h)
+        self.nav=[]
+        for txt,i in [("Chat",0),("Files",1),("Workflow",2),("Models",3),("Audit",4)]:
+            b=QPushButton(txt); b.setObjectName("nav"); b.setProperty("active",i==0)
+            b.clicked.connect(lambda _,ii=i,bb=b:self.switch(ii,bb))
+            self.nav.append(b); l.addWidget(b)
+        l.addStretch()
+        l.addWidget(QLabel("LOCAL ONLY\nBackend authorization\nTamper-evident audit"))
+        return f
+
+    def switch(self,i,b):
+        self.pages.setCurrentIndex(i)
+        for x in self.nav:
+            x.setProperty("active",x is b); x.style().unpolish(x); x.style().polish(x)
+        self.refresh_all()
+
+    def chat_page(self):
+        p=QWidget(); l=QVBoxLayout(p)
+        top=QHBoxLayout(); title=QLabel("CHAT / TASK"); title.setObjectName("title"); top.addWidget(title); top.addStretch()
+        self.mode=QComboBox(); self.mode.addItems(["Workflow","General"]); top.addWidget(self.mode); l.addLayout(top)
+
+        self.output=QPlainTextEdit(); self.output.setReadOnly(True); l.addWidget(self.output,1)
+
+        box=self.panel(); bl=QVBoxLayout(box)
+        self.input=QPlainTextEdit(); self.input.setFixedHeight(110); self.input.setPlaceholderText("Describe what you need to accomplish..."); bl.addWidget(self.input)
+        row=QHBoxLayout()
+        attach=QPushButton("Attach File"); attach.clicked.connect(self.attach); row.addWidget(attach)
+        self.filelabel=QLabel("No file attached"); self.filelabel.setStyleSheet(f"color:{MUTED};"); row.addWidget(self.filelabel); row.addStretch()
+        run=QPushButton("RUN"); run.setObjectName("primary"); run.clicked.connect(self.run_task); row.addWidget(run)
+        self.run_btn=run; bl.addLayout(row); l.addWidget(box)
+        return p
+
+    def attach(self):
+        p,_=QFileDialog.getOpenFileName(self,"Attach local file",str(Path.home()),
+            "Documents (*.pdf *.docx *.xlsx *.pptx *.txt);;Images (*.png *.jpg *.jpeg *.webp);;All files (*)")
+        if p:
+            self.attached_file=p; self.filelabel.setText(Path(p).name)
+
+    def run_task(self):
+        task=self.input.toPlainText().strip()
+        if not task:
+            QMessageBox.warning(self,"Task","Enter a task first."); return
+        uid=self.user.get("user_id",self.user.get("username","usr_local"))
+        role=self.user.get("role","GRADE_2")
+        sid=self.user.get("session_id",f"gui_{uuid.uuid4().hex[:10]}")
+        if self.attached_file:
+            task += f"\n\nAttached local file: {self.attached_file}"
+
+        self.output.setPlainText("> Running locally...\n")
+        self.run_btn.setEnabled(False)
+
+        if self.mode.currentText()=="General":
+            try:
+                r=MODEL_MGR.run_worker("general",task,request_id=sid,max_tokens=512)
+                self.output.appendPlainText(f"GENERAL [{r.status}]\n\n{r.content}")
+            except Exception as e:
+                self.output.appendPlainText(f"ERROR: {e}")
+            self.run_btn.setEnabled(True); return
+
+        self.status.setText("● WORKFLOW RUNNING")
+        self.thread=QThread()
+        self.worker=WorkflowWorker(task,uid,role,sid)
+        self.worker.moveToThread(self.thread); self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.workflow_done); self.worker.failed.connect(self.workflow_failed)
+        self.worker.finished.connect(self.thread.quit); self.worker.failed.connect(self.thread.quit)
+        self.thread.finished.connect(lambda:self.run_btn.setEnabled(True)); self.thread.start()
+
+    def workflow_failed(self,msg):
+        self.output.appendPlainText(f"WORKFLOW FAILED\n{msg}")
+        self.status.setText("● LOCAL • ERROR")
+
+    def workflow_done(self,state):
+        self.current_state=state
+        s=getattr(state,"status","UNKNOWN")
+        done=getattr(state,"completed_steps",[])
+        failed=getattr(state,"failed_steps",[])
+        ver=getattr(state,"verification_summary",{})
+        final=getattr(state,"final_response","")
+        arts=getattr(state,"generated_artifacts",[])
+        self.output.setPlainText(
+            f"WORKFLOW STATUS: {s}\n\n"
+            f"COMPLETED STEPS: {done}\n"
+            f"FAILED STEPS: {failed}\n"
+            f"VERIFICATION: {ver}\n\n{final}\n"
+        )
+        if arts: self.output.appendPlainText("\nARTIFACTS:\n"+ "\n".join(map(str,arts)))
+        self.status.setText("● LOCAL • READY")
+        self.refresh_all()
+
+    def files_page(self):
+        p=QWidget(); l=QVBoxLayout(p); t=QLabel("FILES"); t.setObjectName("title"); l.addWidget(t)
+        self.files=QListWidget(); self.files.itemDoubleClicked.connect(lambda i:open_local_file(i.data(Qt.UserRole))); l.addWidget(self.files,1)
+        return p
+
+    def refresh_files(self):
+        if not hasattr(self,"files"): return
+        self.files.clear()
+        root=Path("data/artifacts")
+        if not root.exists(): return
+        for f in sorted(root.iterdir()):
+            if f.is_file():
+                item=QListWidgetItem(f"{f.name}   |   {f.stat().st_size:,} bytes")
+                item.setData(Qt.UserRole,str(f.resolve())); self.files.addItem(item)
+
+    def workflow_page(self):
+        p=QWidget(); l=QVBoxLayout(p); t=QLabel("WORKFLOW"); t.setObjectName("title"); l.addWidget(t)
+        self.workflow_table=QTableWidget(0,2); self.workflow_table.setHorizontalHeaderLabels(["STEP","STATUS"]); self.workflow_table.setEditTriggers(QTableWidget.NoEditTriggers); l.addWidget(self.workflow_table,1)
+        return p
+
+    def refresh_workflow(self):
+        if not hasattr(self,"workflow_table"): return
+        self.workflow_table.setRowCount(0)
+        s=self.current_state
+        if not s:return
+        for n in getattr(s,"completed_steps",[]):
+            r=self.workflow_table.rowCount(); self.workflow_table.insertRow(r)
+            self.workflow_table.setItem(r,0,QTableWidgetItem(str(n))); self.workflow_table.setItem(r,1,QTableWidgetItem("COMPLETED"))
+        for n in getattr(s,"failed_steps",[]):
+            r=self.workflow_table.rowCount(); self.workflow_table.insertRow(r)
+            self.workflow_table.setItem(r,0,QTableWidgetItem(str(n))); self.workflow_table.setItem(r,1,QTableWidgetItem("FAILED"))
+
+    def models_page(self):
+        p=QWidget(); l=QVBoxLayout(p); t=QLabel("MODELS"); t.setObjectName("title"); l.addWidget(t)
+        self.models=QTableWidget(0,3); self.models.setHorizontalHeaderLabels(["WORKER","STATE","MODEL"]); self.models.setEditTriggers(QTableWidget.NoEditTriggers); l.addWidget(self.models,1)
+        return p
+
+    def refresh_models(self):
+        if not hasattr(self,"models"): return
+        self.models.setRowCount(0)
+        for name in ["organizer","general","coding","vision","document"]:
+            state="UNKNOWN"; model=""
+            try:
+                if MODEL_MGR:
+                    state=MODEL_MGR.get_model_state(name)
+                    w=MODEL_MGR.registry.get_worker(name)
+                    model=getattr(w,"model_name","") if w else ""
+            except Exception as e: model=str(e)
+            r=self.models.rowCount(); self.models.insertRow(r)
+            for c,v in enumerate([name.upper(),str(state),str(model)]):
+                self.models.setItem(r,c,QTableWidgetItem(v))
+
+    def audit_page(self):
+        p=QWidget(); l=QVBoxLayout(p); t=QLabel("AUDIT"); t.setObjectName("title"); l.addWidget(t)
+        self.audit=QListWidget(); l.addWidget(self.audit,1)
+        self.audit_status=QLabel(""); self.audit_status.setStyleSheet(f"color:{GOOD};font-family:monospace;"); l.addWidget(self.audit_status)
+        return p
+
+    def refresh_audit(self):
+        if not hasattr(self,"audit"): return
+        self.audit.clear()
+        if AUDIT is None: self.audit.addItem("Audit service unavailable."); return
+        try:
+            x=AUDIT.verify_integrity()
+            self.audit_status.setText(f"CHAIN: {'VALID' if x.get('chain_valid') else 'INVALID'} | RECORDS: {x.get('total_records_checked',0)}")
+        except Exception as e:
+            self.audit_status.setText(f"AUDIT ERROR: {e}")
+
+    def refresh_all(self):
+        self.refresh_files(); self.refresh_workflow(); self.refresh_models(); self.refresh_audit()
+        if MODEL_MGR:
+            try:
+                s=MODEL_MGR.get_system_status()
+                self.resource.setText(f"ACTIVE {len(s.get('active_workers',[]))} | {s.get('vram_current_used_mb',0)} MB USED | {s.get('vram_headroom_mb',0)} MB HEADROOM")
+            except Exception:
+                pass
+
+
+def run_app():
+    ensure_schema()
+    app=QApplication(sys.argv)
+    apply_app_style(app)
+
+    login=LoginWidget()
+    host=QMainWindow()
+    host.setWindowTitle("Sovereign Industrial AI Workbench")
+    host.resize(820,560)
+    host.setCentralWidget(login)
+    host.show()
+
+    def authenticated(user):
+        main=SovereignWorkbenchGUI(user)
+        main.show(); host.hide()
+        app.main_window=main
+
+    login.authenticated.connect(authenticated)
+    return app.exec()
+
+
+if __name__=="__main__":
+    raise SystemExit(run_app())

@@ -1,5 +1,0 @@
-Equipment Tag,Parameter,Value,Unit,Design Baseline,Compliance Status
-E-DEBUG-002,Mass Flow Rate,45000,kg/h,45000,NORMAL
-E-DEBUG-002,Delta Temperature,75.5,deg C,74.0,OPTIMAL
-E-DEBUG-002,Calculated Heat Duty,2076.2,kW,2200.0,NORMAL
-E-DEBUG-002,Thermal Efficiency,94.37,%,88.0,EXCEEDS_BASELINE

@@ -1,0 +1,1023 @@
+
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+import uuid
+from pathlib import Path
+from typing import Optional, Any
+
+from PySide6.QtCore import QObject, QThread, Signal, Qt
+from PySide6.QtGui import QFont, QTextCursor
+from PySide6.QtWidgets import (
+    QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
+    QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPlainTextEdit, QTextBrowser,
+    QPushButton, QStackedWidget, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QWidget, QComboBox, QFormLayout
+)
+
+from .styles import apply_app_style, MUTED, GOOD, BAD, ACCENT, WARN
+
+
+try:
+    from backend.app.auth.auth_service import AuthService
+except Exception:
+    AuthService = None
+
+try:
+    from backend.app.database.db import DB
+except Exception:
+    DB = None
+
+try:
+    from backend.app.workflows.workflow_engine import WORKFLOW_ENGINE
+except Exception:
+    WORKFLOW_ENGINE = None
+
+try:
+    from backend.app.audit.audit_service import AUDIT
+except Exception:
+    AUDIT = None
+
+try:
+    from model_manager.manager import MODEL_MGR
+except Exception:
+    MODEL_MGR = None
+
+
+def ensure_schema():
+    if DB is not None:
+        try:
+            DB.init_schema()
+        except Exception:
+            pass
+
+
+def open_local_file(path: str):
+    try:
+        if sys.platform.startswith("linux"):
+            subprocess.Popen(["xdg-open", path])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        elif sys.platform.startswith("win"):
+            os.startfile(path)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
+
+class ChatInput(QPlainTextEdit):
+    """
+    Ollama-style chat composer:
+      Enter       -> send
+      Shift+Enter -> newline
+    """
+    send_requested = Signal()
+
+    def keyPressEvent(self, event):
+        modifiers = event.modifiers()
+        key = event.key()
+
+        if key == Qt.Key_Return or key == Qt.Key_Enter:
+            if modifiers & Qt.ShiftModifier:
+                super().keyPressEvent(event)
+            else:
+                if self.toPlainText().strip():
+                    self.send_requested.emit()
+                return
+
+        else:
+            super().keyPressEvent(event)
+
+
+class WorkflowWorker(QObject):
+    finished = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, task, user_id, role, session_id):
+        super().__init__()
+        self.task = task
+        self.user_id = user_id
+        self.role = role
+        self.session_id = session_id
+
+    def run(self):
+        try:
+            if WORKFLOW_ENGINE is None:
+                raise RuntimeError("Workflow Engine unavailable.")
+            state = WORKFLOW_ENGINE.execute_workflow(
+                task_description=self.task,
+                user_id=self.user_id,
+                role=self.role,
+                session_id=self.session_id,
+            )
+            self.finished.emit(state)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class LoginWidget(QWidget):
+    authenticated = Signal(dict)
+
+    def __init__(self):
+        super().__init__()
+
+        root = QHBoxLayout(self)
+        root.setContentsMargins(70, 60, 70, 60)
+        root.setSpacing(24)
+
+        brand = QFrame()
+        brand.setObjectName("panel")
+        bl = QVBoxLayout(brand)
+        bl.setContentsMargins(34, 34, 34, 34)
+
+        title = QLabel("SOVEREIGN\nINDUSTRIAL AI")
+        title.setStyleSheet(f"font-size:30px;font-weight:700;color:{ACCENT};")
+        bl.addWidget(title)
+
+        sub = QLabel(
+            "LOCAL INTELLIGENCE FOR\n"
+            "CONFIDENT INDUSTRIAL OPERATIONS"
+        )
+        sub.setStyleSheet(f"color:{MUTED};font-size:12px;")
+        bl.addWidget(sub)
+
+        bl.addStretch()
+
+        local = QLabel("● LOCAL RUNTIME")
+        local.setStyleSheet(f"color:{GOOD};font-weight:700;")
+        bl.addWidget(local)
+
+        secure = QLabel("● SECURE SESSION")
+        secure.setStyleSheet(f"color:{GOOD};font-weight:700;")
+        bl.addWidget(secure)
+
+        no_cloud = QLabel("NO CLOUD DATA PATH")
+        no_cloud.setStyleSheet(f"color:{MUTED};font-size:10px;")
+        bl.addWidget(no_cloud)
+
+        form_frame = QFrame()
+        form_frame.setObjectName("panel")
+        fl = QVBoxLayout(form_frame)
+        fl.setContentsMargins(34, 34, 34, 34)
+
+        t = QLabel("Sign in")
+        t.setObjectName("title")
+        fl.addWidget(t)
+
+        st = QLabel("Use your local workbench credentials.")
+        st.setObjectName("subtitle")
+        fl.addWidget(st)
+        fl.addSpacing(18)
+
+        fl.addWidget(QLabel("USERNAME"))
+        self.username = QLineEdit()
+        self.username.setPlaceholderText("Local username")
+        fl.addWidget(self.username)
+
+        fl.addSpacing(8)
+        fl.addWidget(QLabel("PASSWORD"))
+        self.password = QLineEdit()
+        self.password.setEchoMode(QLineEdit.Password)
+        self.password.setPlaceholderText("Password")
+        fl.addWidget(self.password)
+
+        self.error = QLabel()
+        self.error.setWordWrap(True)
+        self.error.setStyleSheet(f"color:{BAD};")
+        fl.addWidget(self.error)
+
+        self.sign_in = QPushButton("SIGN IN")
+        self.sign_in.setObjectName("primary")
+        self.sign_in.clicked.connect(self.login)
+        fl.addSpacing(6)
+        fl.addWidget(self.sign_in)
+        fl.addStretch()
+
+        root.addWidget(brand, 1)
+        root.addWidget(form_frame, 1)
+
+    def login(self):
+        ensure_schema()
+        username = self.username.text().strip()
+        password = self.password.text()
+
+        if not username or not password:
+            self.error.setText("Enter username and password.")
+            return
+
+        if AuthService is None:
+            self.error.setText("Authentication service unavailable.")
+            return
+
+        try:
+            result = AuthService().login(username, password)
+            if result.get("success"):
+                self.authenticated.emit(result)
+            else:
+                self.error.setText(result.get("error", "Invalid credentials"))
+        except Exception as exc:
+            self.error.setText(str(exc))
+
+
+class SovereignWorkbenchGUI(QMainWindow):
+    def __init__(self, user: Optional[dict] = None):
+        super().__init__()
+
+        self.user = user or {
+            "user_id": "usr_local",
+            "username": "local",
+            "role": "GRADE_2",
+        }
+        self.current_state = None
+        self.attached_file = None
+
+        self.setWindowTitle("Sovereign Industrial AI Workbench")
+        self.resize(1360, 820)
+        self.setMinimumSize(1050, 680)
+
+        self._build_ui()
+        self._refresh_all()
+
+    def _panel(self):
+        frame = QFrame()
+        frame.setObjectName("panel")
+        return frame
+
+    def _build_ui(self):
+        central = QWidget()
+        self.setCentralWidget(central)
+
+        shell = QVBoxLayout(central)
+        shell.setContentsMargins(12, 12, 12, 10)
+        shell.setSpacing(10)
+
+        shell.addWidget(self._header())
+
+        body = QHBoxLayout()
+        body.setSpacing(10)
+
+        body.addWidget(self._sidebar())
+
+        self.pages = QStackedWidget()
+        self.pages.addWidget(self._chat_page())
+        self.pages.addWidget(self._files_page())
+        self.pages.addWidget(self._workflow_page())
+        self.pages.addWidget(self._models_page())
+        self.pages.addWidget(self._audit_page())
+
+        body.addWidget(self.pages, 1)
+        shell.addLayout(body, 1)
+
+        footer = self._panel()
+        fl = QHBoxLayout(footer)
+        fl.setContentsMargins(12, 6, 12, 6)
+
+        self.status = QLabel("● LOCAL • READY")
+        self.status.setStyleSheet(f"color:{GOOD};font-weight:700;")
+        fl.addWidget(self.status)
+        fl.addStretch()
+
+        self.resource = QLabel()
+        self.resource.setStyleSheet(
+            f"color:{MUTED};font-family:monospace;font-size:10px;"
+        )
+        fl.addWidget(self.resource)
+
+        shell.addWidget(footer)
+
+    def _header(self):
+        frame = self._panel()
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(14, 9, 14, 9)
+
+        title = QLabel("SOVEREIGN INDUSTRIAL AI WORKBENCH")
+        title.setStyleSheet("font-size:14px;font-weight:700;")
+        layout.addWidget(title)
+
+        pill = QLabel("LOCAL")
+        pill.setStyleSheet(
+            f"color:{ACCENT};background:#eaf2ff;"
+            "padding:4px 8px;border-radius:6px;font-weight:700;"
+        )
+        layout.addWidget(pill)
+
+        layout.addStretch()
+
+        name = self.user.get("username", self.user.get("user_id", "local"))
+        role = self.user.get("role", "UNKNOWN")
+        user = QLabel(f"{name}  •  {role}")
+        user.setStyleSheet(f"color:{MUTED};font-family:monospace;")
+        layout.addWidget(user)
+
+        return frame
+
+    def _sidebar(self):
+        frame = self._panel()
+        frame.setFixedWidth(170)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(8, 12, 8, 12)
+
+        label = QLabel("WORKBENCH")
+        label.setObjectName("section")
+        layout.addWidget(label)
+        layout.addSpacing(5)
+
+        self.nav_buttons = []
+        items = [
+            ("Chat", 0),
+            ("Files", 1),
+            ("Workflow", 2),
+            ("Models", 3),
+            ("Audit", 4),
+        ]
+
+        for text, idx in items:
+            button = QPushButton(text)
+            button.setObjectName("nav")
+            button.setProperty("active", idx == 0)
+            button.clicked.connect(
+                lambda _, i=idx, b=button: self._switch(i, b)
+            )
+            self.nav_buttons.append(button)
+            layout.addWidget(button)
+
+        layout.addStretch()
+
+        note = QLabel(
+            "LOCAL ONLY\n"
+            "Backend authorization\n"
+            "Audit protected"
+        )
+        note.setStyleSheet(f"color:{MUTED};font-size:10px;padding:7px;")
+        layout.addWidget(note)
+
+        return frame
+
+    def _switch(self, index, button):
+        self.pages.setCurrentIndex(index)
+        for b in self.nav_buttons:
+            b.setProperty("active", b is button)
+            b.style().unpolish(b)
+            b.style().polish(b)
+        self._refresh_all()
+
+    def _chat_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(10)
+
+        # ----------------------------------------------------
+        # Header
+        # ----------------------------------------------------
+
+        top = QHBoxLayout()
+
+        title_box = QVBoxLayout()
+
+        title = QLabel("Chat")
+        title.setObjectName("title")
+        title_box.addWidget(title)
+
+        subtitle = QLabel(
+            "Local AI workspace · your data stays on this machine"
+        )
+        subtitle.setObjectName("subtitle")
+        title_box.addWidget(subtitle)
+
+        top.addLayout(title_box)
+        top.addStretch()
+
+        self.mode = QComboBox()
+        self.mode.addItems([
+            "Workflow",
+            "General",
+        ])
+        self.mode.setFixedWidth(125)
+        top.addWidget(self.mode)
+
+        local = QLabel("● LOCAL")
+        local.setStyleSheet(
+            f"color:{GOOD};font-weight:700;padding-left:8px;"
+        )
+        top.addWidget(local)
+
+        layout.addLayout(top)
+
+        # ----------------------------------------------------
+        # Chat history
+        # ----------------------------------------------------
+
+        history = self._panel()
+
+        history_layout = QVBoxLayout(history)
+        history_layout.setContentsMargins(12, 12, 12, 12)
+
+        self.output = QTextBrowser()
+        self.output.setOpenExternalLinks(False)
+        self.output.setPlaceholderText(
+            "Start a conversation with your local AI…"
+        )
+
+        self.output.setStyleSheet(
+            """
+            QTextBrowser {
+                border: 0;
+                background: transparent;
+                padding: 8px;
+            }
+            """
+        )
+
+        history_layout.addWidget(self.output, 1)
+        layout.addWidget(history, 1)
+
+        # ----------------------------------------------------
+        # Composer
+        # ----------------------------------------------------
+
+        composer = self._panel()
+        composer_layout = QVBoxLayout(composer)
+        composer_layout.setContentsMargins(10, 10, 10, 10)
+        composer_layout.setSpacing(8)
+
+        self.task_input = ChatInput()
+        self.task_input.setPlaceholderText(
+            "Message your local AI…  (Enter to send, Shift+Enter for new line)"
+        )
+        self.task_input.setFixedHeight(90)
+
+        self.task_input.send_requested.connect(self._run)
+        composer_layout.addWidget(self.task_input)
+
+        bottom = QHBoxLayout()
+
+        self.attach_button = QPushButton("＋ Attach")
+        self.attach_button.clicked.connect(self._attach)
+        bottom.addWidget(self.attach_button)
+
+        self.file_label = QLabel("No file attached")
+        self.file_label.setStyleSheet(
+            f"color:{MUTED};font-size:10px;"
+        )
+        bottom.addWidget(self.file_label)
+
+        bottom.addStretch()
+
+        self.send_hint = QLabel("Enter ↵")
+        self.send_hint.setStyleSheet(
+            f"color:{MUTED};font-size:10px;"
+        )
+        bottom.addWidget(self.send_hint)
+
+        self.run_button = QPushButton("Send")
+        self.run_button.setObjectName("primary")
+        self.run_button.setMinimumWidth(90)
+        self.run_button.clicked.connect(self._run)
+        bottom.addWidget(self.run_button)
+
+        composer_layout.addLayout(bottom)
+        layout.addWidget(composer)
+
+        return page
+
+
+    def _attach(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Attach local file",
+            str(Path.home()),
+            "Documents (*.pdf *.docx *.xlsx *.pptx *.txt);;Images (*.png *.jpg *.jpeg *.webp);;All files (*)"
+        )
+        if path:
+            self.attached_file = path
+            self.file_label.setText(Path(path).name)
+
+    def _run(self):
+        task = self.task_input.toPlainText().strip()
+
+        if not task:
+            return
+
+        user_text = task
+
+        if self.attached_file:
+            task += (
+                f"\n\nAttached local file: {self.attached_file}"
+            )
+
+        # ----------------------------------------------------
+        # User message
+        # ----------------------------------------------------
+
+        self.output.append(
+            f"""
+            <div style="
+                margin:14px 6px 8px 90px;
+                padding:12px 14px;
+                background:#eaf2ff;
+                border:1px solid #cfe0fb;
+                border-radius:12px;
+            ">
+                <div style="color:#1769e0;font-size:10px;font-weight:700;">
+                    YOU
+                </div>
+                <div style="margin-top:6px;color:#18212b;font-size:13px;">
+                    {user_text.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace(chr(10),"<br>")}
+                </div>
+            </div>
+            """
+        )
+
+        self.task_input.clear()
+        self.run_button.setEnabled(False)
+        self.status.setText("● THINKING")
+
+        # ----------------------------------------------------
+        # General direct response
+        # ----------------------------------------------------
+
+        user_id = self.user.get(
+            "user_id",
+            self.user.get("username", "usr_local"),
+        )
+
+        role = self.user.get(
+            "role",
+            "GRADE_2",
+        )
+
+        session_id = self.user.get(
+            "session_id",
+            f"gui_{uuid.uuid4().hex[:10]}",
+        )
+
+        if self.mode.currentText() == "General":
+
+            try:
+                result = MODEL_MGR.run_worker(
+                    "general",
+                    task,
+                    request_id=session_id,
+                    max_tokens=512,
+                )
+
+                content = getattr(
+                    result,
+                    "content",
+                    "",
+                )
+
+                self.output.append(
+                    f"""
+                    <div style="
+                        margin:8px 90px 14px 6px;
+                        padding:12px 14px;
+                        background:#ffffff;
+                        border:1px solid #dfe5ec;
+                        border-radius:12px;
+                    ">
+                        <div style="
+                            color:#6d7885;
+                            font-size:10px;
+                            font-weight:700;
+                        ">
+                            LOCAL AI · GENERAL
+                        </div>
+                        <div style="
+                            margin-top:7px;
+                            color:#18212b;
+                            font-size:13px;
+                        ">
+                            {str(content)
+                                .replace("&","&amp;")
+                                .replace("<","&lt;")
+                                .replace(">","&gt;")
+                                .replace(chr(10),"<br>")}
+                        </div>
+                    </div>
+                    """
+                )
+
+            except Exception as exc:
+
+                self.output.append(
+                    f"""
+                    <div style="
+                        margin:8px 90px 14px 6px;
+                        padding:12px 14px;
+                        background:#fff0f1;
+                        border:1px solid #f2c4c8;
+                        border-radius:12px;
+                    ">
+                        <div style="color:#c53b45;font-weight:700;">
+                            ERROR
+                        </div>
+                        <div style="margin-top:6px;">
+                            {str(exc)}
+                        </div>
+                    </div>
+                    """
+                )
+
+            self.run_button.setEnabled(True)
+            self.status.setText("● LOCAL • READY")
+            return
+
+        # ----------------------------------------------------
+        # Workflow
+        # ----------------------------------------------------
+
+        self.output.append(
+            """
+            <div style="
+                margin:8px 90px 14px 6px;
+                padding:10px 14px;
+                background:#f8fafc;
+                border:1px solid #dfe5ec;
+                border-radius:10px;
+            ">
+                <span style="color:#1769e0;font-weight:700;">
+                    LOCAL WORKFLOW
+                </span>
+                <span style="color:#6d7885;">
+                    &nbsp; processing…
+                </span>
+            </div>
+            """
+        )
+
+        self.thread = QThread()
+
+        self.worker = WorkflowWorker(
+            task,
+            user_id,
+            role,
+            session_id,
+        )
+
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(
+            self.worker.run
+        )
+
+        self.worker.finished.connect(
+            self._workflow_done
+        )
+
+        self.worker.failed.connect(
+            self._workflow_failed
+        )
+
+        self.worker.finished.connect(
+            self.thread.quit
+        )
+
+        self.worker.failed.connect(
+            self.thread.quit
+        )
+
+        self.thread.finished.connect(
+            self._workflow_thread_finished
+        )
+
+        self.thread.start()
+
+
+    def _workflow_thread_finished(self):
+        self.run_button.setEnabled(True)
+
+    def _workflow_failed(self, message):
+        self.output.setPlainText(f"WORKFLOW FAILED\n\n{message}")
+        self.status.setText("● LOCAL • ERROR")
+
+    def _workflow_done(self, state):
+        self.current_state = state
+
+        status = getattr(state, "status", "UNKNOWN")
+        completed = getattr(state, "completed_steps", [])
+        failed = getattr(state, "failed_steps", [])
+        verification = getattr(
+            state,
+            "verification_summary",
+            {},
+        )
+        final = getattr(
+            state,
+            "final_response",
+            "",
+        )
+        artifacts = getattr(
+            state,
+            "generated_artifacts",
+            [],
+        )
+
+        badge_color = (
+            "#178a55"
+            if str(status).upper() == "COMPLETED"
+            else "#c53b45"
+        )
+
+        safe_final = (
+            str(final)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\n", "<br>")
+        )
+
+        self.output.append(
+            f"""
+            <div style="
+                margin:8px 90px 14px 6px;
+                padding:14px;
+                background:#ffffff;
+                border:1px solid #dfe5ec;
+                border-radius:12px;
+            ">
+                <div style="
+                    color:{badge_color};
+                    font-size:10px;
+                    font-weight:700;
+                ">
+                    WORKFLOW · {status}
+                </div>
+
+                <div style="
+                    margin-top:8px;
+                    color:#18212b;
+                    font-size:13px;
+                    line-height:1.5;
+                ">
+                    {safe_final}
+                </div>
+
+                <div style="
+                    margin-top:12px;
+                    padding-top:10px;
+                    border-top:1px solid #edf0f3;
+                    color:#6d7885;
+                    font-size:10px;
+                ">
+                    Steps: {completed}
+                    &nbsp; · &nbsp;
+                    Verification: {verification.get("overall_status","UNKNOWN")}
+                </div>
+            </div>
+            """
+        )
+
+        if artifacts:
+            self.output.append(
+                f"""
+                <div style="
+                    margin:0 90px 14px 6px;
+                    padding:12px 14px;
+                    background:#eaf8f1;
+                    border:1px solid #c9ead9;
+                    border-radius:10px;
+                    color:#178a55;
+                ">
+                    <b>Artifacts generated</b><br>
+                    {"<br>".join(str(a) for a in artifacts)}
+                </div>
+                """
+            )
+
+        self.status.setText("● LOCAL • READY")
+        self._refresh_all()
+
+
+    def _files_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        title = QLabel("FILES")
+        title.setObjectName("title")
+        layout.addWidget(title)
+
+        sub = QLabel("Local generated and working files.")
+        sub.setObjectName("subtitle")
+        layout.addWidget(sub)
+
+        self.files = QListWidget()
+        self.files.itemDoubleClicked.connect(
+            lambda item: open_local_file(item.data(Qt.UserRole))
+        )
+        layout.addWidget(self.files, 1)
+
+        return page
+
+    def _refresh_files(self):
+        if not hasattr(self, "files"):
+            return
+
+        self.files.clear()
+        root = Path("data/artifacts")
+        if not root.exists():
+            return
+
+        for p in sorted(root.iterdir()):
+            if p.is_file():
+                item = QListWidgetItem(
+                    f"{p.name}    ·    {p.stat().st_size:,} bytes"
+                )
+                item.setData(Qt.UserRole, str(p.resolve()))
+                self.files.addItem(item)
+
+    def _workflow_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        title = QLabel("WORKFLOW")
+        title.setObjectName("title")
+        layout.addWidget(title)
+
+        self.workflow_info = QLabel("No workflow executed.")
+        self.workflow_info.setObjectName("subtitle")
+        layout.addWidget(self.workflow_info)
+
+        self.workflow_table = QTableWidget(0, 2)
+        self.workflow_table.setHorizontalHeaderLabels(
+            ["STEP", "STATUS"]
+        )
+        self.workflow_table.setEditTriggers(
+            QTableWidget.NoEditTriggers
+        )
+        self.workflow_table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.workflow_table, 1)
+
+        return page
+
+    def _refresh_workflow(self):
+        if not hasattr(self, "workflow_table"):
+            return
+
+        self.workflow_table.setRowCount(0)
+
+        if self.current_state is None:
+            self.workflow_info.setText("No workflow executed.")
+            return
+
+        state = self.current_state
+        completed = getattr(state, "completed_steps", [])
+        failed = getattr(state, "failed_steps", [])
+        status = getattr(state, "status", "UNKNOWN")
+
+        self.workflow_info.setText(
+            f"STATUS {status}    •    COMPLETED {completed}    •    FAILED {failed}"
+        )
+
+        for n in completed:
+            r = self.workflow_table.rowCount()
+            self.workflow_table.insertRow(r)
+            self.workflow_table.setItem(r, 0, QTableWidgetItem(str(n)))
+            self.workflow_table.setItem(r, 1, QTableWidgetItem("COMPLETED"))
+
+        for n in failed:
+            r = self.workflow_table.rowCount()
+            self.workflow_table.insertRow(r)
+            self.workflow_table.setItem(r, 0, QTableWidgetItem(str(n)))
+            self.workflow_table.setItem(r, 1, QTableWidgetItem("FAILED"))
+
+    def _models_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        title = QLabel("MODELS")
+        title.setObjectName("title")
+        layout.addWidget(title)
+
+        sub = QLabel("Current local worker state.")
+        sub.setObjectName("subtitle")
+        layout.addWidget(sub)
+
+        self.models = QTableWidget(0, 3)
+        self.models.setHorizontalHeaderLabels(
+            ["WORKER", "STATE", "MODEL"]
+        )
+        self.models.setEditTriggers(
+            QTableWidget.NoEditTriggers
+        )
+        self.models.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.models, 1)
+
+        return page
+
+    def _refresh_models(self):
+        if not hasattr(self, "models"):
+            return
+
+        self.models.setRowCount(0)
+
+        for name in ["organizer", "general", "coding", "vision", "document"]:
+            state = "UNKNOWN"
+            model = ""
+
+            try:
+                if MODEL_MGR:
+                    state = MODEL_MGR.get_model_state(name)
+                    worker = MODEL_MGR.registry.get_worker(name)
+                    model = getattr(worker, "model_name", "") if worker else ""
+            except Exception as exc:
+                model = str(exc)
+
+            r = self.models.rowCount()
+            self.models.insertRow(r)
+            values = [name.upper(), str(state), str(model)]
+
+            for c, v in enumerate(values):
+                self.models.setItem(r, c, QTableWidgetItem(v))
+
+    def _audit_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        title = QLabel("AUDIT")
+        title.setObjectName("title")
+        layout.addWidget(title)
+
+        self.audit = QListWidget()
+        layout.addWidget(self.audit, 1)
+
+        self.audit_status = QLabel("")
+        self.audit_status.setStyleSheet(
+            f"color:{GOOD};font-family:monospace;font-size:10px;"
+        )
+        layout.addWidget(self.audit_status)
+
+        return page
+
+    def _refresh_audit(self):
+        if not hasattr(self, "audit"):
+            return
+
+        self.audit.clear()
+
+        if AUDIT is None:
+            self.audit.addItem("Audit service unavailable.")
+            return
+
+        try:
+            result = AUDIT.verify_integrity()
+            valid = result.get("chain_valid", False)
+            count = result.get("total_records_checked", 0)
+
+            self.audit_status.setText(
+                f"CHAIN: {'VALID' if valid else 'INVALID'}   •   RECORDS: {count}"
+            )
+
+        except Exception as exc:
+            self.audit_status.setText(f"AUDIT CHECK ERROR: {exc}")
+
+    def _refresh_all(self):
+        self._refresh_files()
+        self._refresh_workflow()
+        self._refresh_models()
+        self._refresh_audit()
+
+        if MODEL_MGR is not None:
+            try:
+                status = MODEL_MGR.get_system_status()
+                active = len(status.get("active_workers", []))
+                used = status.get("vram_current_used_mb", 0)
+                headroom = status.get("vram_headroom_mb", 0)
+                self.resource.setText(
+                    f"ACTIVE {active}  •  {used} MB USED  •  {headroom} MB HEADROOM"
+                )
+            except Exception:
+                pass
+
+
+def run_app():
+    ensure_schema()
+
+    app = QApplication(sys.argv)
+    apply_app_style(app)
+
+    login = LoginWidget()
+
+    host = QMainWindow()
+    host.setWindowTitle("Sovereign Industrial AI Workbench")
+    host.resize(860, 600)
+    host.setMinimumSize(760, 520)
+    host.setCentralWidget(login)
+    host.show()
+
+    def authenticated(user):
+        main = SovereignWorkbenchGUI(user)
+        main.show()
+        host.hide()
+        app.main_window = main
+
+    login.authenticated.connect(authenticated)
+
+    return app.exec()
+
+
+if __name__ == "__main__":
+    raise SystemExit(run_app())
