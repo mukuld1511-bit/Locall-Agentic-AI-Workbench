@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from model_manager.adapters.base import BaseModelAdapter
 from model_manager.adapters.mock_dev_adapter import MockDevAdapter
 from model_manager.adapters.llama_cpp_adapter import LlamaCppAdapter
+from model_manager.adapters.transformers_organizer_adapter import TransformersOrganizerAdapter
 
 
 @dataclass
@@ -34,18 +35,32 @@ class ModelRegistry:
 
     def _init_default_registry(self) -> None:
         """Initializes default registry profiles for the 500M Organizer and local workers."""
-        # 1. 500M Organizer Model (Controller)
+        # 1. 500M Organizer Model (trained safetensors)
+        organizer_path = "/home/piet/sih-workbench/organizer/models/organizer-final"
+
         self.register_worker(
             WorkerModelDefinition(
                 worker_type="organizer",
                 model_name="Organizer-500M-Industrial-v1",
-                file_path="models/organizer_500m.gguf",
-                checksum_sha256="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                license="Apache-2.0",
-                capabilities=["intent_classification", "workflow_decomposition", "routing", "observation", "recovery"],
+                file_path=organizer_path,
+                checksum_sha256=None,
+                license="Local deployment artifact",
+                capabilities=[
+                    "intent_classification",
+                    "workflow_decomposition",
+                    "routing",
+                    "tool_selection",
+                    "verification",
+                    "recovery",
+                    "communication",
+                ],
                 vram_required_mb=1200,
                 ram_required_mb=2048,
-                adapter=MockDevAdapter("organizer", "Organizer-500M-Industrial-v1", 1200, 2048),
+                adapter=TransformersOrganizerAdapter(
+                    "organizer",
+                    "Organizer-500M-Industrial-v1",
+                    organizer_path,
+                ),
             )
         )
 
@@ -54,13 +69,18 @@ class ModelRegistry:
             WorkerModelDefinition(
                 worker_type="general",
                 model_name="Qwen2.5-3B-Instruct-Q4_K_M",
-                file_path="models/qwen2.5_3b_instruct.gguf",
+                file_path="/home/piet/sih-workbench/models/qwen2.5-3b/qwen2.5-3b-instruct-q4_k_m.gguf",
                 checksum_sha256="a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef",
                 license="Apache-2.0",
                 capabilities=["reasoning", "summarization", "synthesis", "audit_note_generation"],
                 vram_required_mb=3200,
                 ram_required_mb=4096,
-                adapter=MockDevAdapter("general", "Qwen2.5-3B-Instruct-Q4_K_M", 3200, 4096),
+                adapter=LlamaCppAdapter(
+                    worker_type="general",
+                    model_name="Qwen2.5-3B-Instruct-Q4_K_M",
+                    endpoint="http://127.0.0.1:8091",
+                    vram_mb=3200,
+                ),
             )
         )
 
@@ -69,13 +89,18 @@ class ModelRegistry:
             WorkerModelDefinition(
                 worker_type="coding",
                 model_name="StarCoder2-3B-Instruct-Q4_K_M",
-                file_path="models/starcoder2_3b_instruct.gguf",
+                file_path="/home/piet/sih-workbench/models/starcoder2-3b/starcoder2-3b-instruct.Q4_K_M.gguf",
                 checksum_sha256="c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef1234",
                 license="BigCode OpenRAIL-M v1",
                 capabilities=["python", "engineering_math", "api510_calc", "data_processing", "debugging"],
                 vram_required_mb=3000,
                 ram_required_mb=4096,
-                adapter=MockDevAdapter("coding", "StarCoder2-3B-Instruct-Q4_K_M", 3000, 4096),
+                adapter=LlamaCppAdapter(
+                    worker_type="coding",
+                    model_name="StarCoder2-3B-Instruct-Q4_K_M",
+                    endpoint="http://127.0.0.1:8092",
+                    vram_mb=3000,
+                ),
             )
         )
 
@@ -84,13 +109,20 @@ class ModelRegistry:
             WorkerModelDefinition(
                 worker_type="vision",
                 model_name="Qwen2.5-VL-3B-Instruct-Q4_K_M",
-                file_path="models/qwen2.5_vl_3b.gguf",
+                file_path="/home/piet/sih-workbench/models/Qwen2.5-VL-3B-Instruct-GGUF/Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
                 checksum_sha256="d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef123456",
                 license="Apache-2.0",
                 capabilities=["diagram_analysis", "pid_inspection", "scanned_doc_ocr", "defect_detection"],
                 vram_required_mb=4100,
                 ram_required_mb=6144,
-                adapter=MockDevAdapter("vision", "Qwen2.5-VL-3B-Instruct-Q4_K_M", 4100, 6144),
+                adapter=LlamaCppAdapter(
+                    worker_type="vision",
+                    model_name="Qwen2.5-VL-3B-Instruct-Q4_K_M",
+                    endpoint="http://127.0.0.1:8093",
+                    vram_mb=4100,
+                    mmproj_path="/home/piet/sih-workbench/models/Qwen2.5-VL-3B-Instruct-GGUF/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf",
+                    media_path="/home/piet/vision-media",
+                ),
             )
         )
 
@@ -99,13 +131,18 @@ class ModelRegistry:
             WorkerModelDefinition(
                 worker_type="document",
                 model_name="Gemma-3-4B-IT-Q4_K_M",
-                file_path="models/gemma3_4b_it.gguf",
+                file_path="/home/piet/sih-workbench/models/qwen2.5-3b/qwen2.5-3b-instruct-q4_k_m.gguf",
                 checksum_sha256="e5f678901234567890abcdef1234567890abcdef1234567890abcdef12345678",
                 license="Gemma Terms of Use",
                 capabilities=["rag_synthesis", "sop_comparison", "table_extraction", "compliance_audit"],
                 vram_required_mb=3600,
                 ram_required_mb=4096,
-                adapter=MockDevAdapter("document", "Gemma-3-4B-IT-Q4_K_M", 3600, 4096),
+                adapter=LlamaCppAdapter(
+                    worker_type="document",
+                    model_name="Gemma-3-4B-IT-Q4_K_M",
+                    endpoint="http://127.0.0.1:8094",
+                    vram_mb=3600,
+                ),
             )
         )
 

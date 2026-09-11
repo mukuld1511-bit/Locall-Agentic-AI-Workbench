@@ -1,732 +1,723 @@
-"""Sovereign Industrial AI Workbench - Native Local Desktop GUI Client.
 
-Organization: Mangalore Refinery and Petrochemicals Limited (MRPL)
-Problem Statement ID: SIH26117
-Operating Environment: Air-Gapped Local Workstation | Zero Cloud Egress
-
-Simplified, Clean Desktop AI Assistant:
-- Top-Level Navigation: CHAT, FILES, ADMIN (Admin only)
-- CHAT: Conversation area, attached files, message input, dispatch button,
-  and compact side panel showing current workflow task, step, worker, tool, and status.
-- FILES: Uploaded/ingested files and generated deliverables with local open/save.
-- SECURITY: Header indicators showing authenticated user, clearance role,
-  default-deny policy, local-only network status, and SHA-256 audit validity.
-- ADMIN: Users, Roles & Policies, Auto-managed Model Registry (zero hardware config), Audit Logs.
-- Hardware detection, memory budgets, and worker swapping occur AUTOMATICALLY in backend.
-"""
+from __future__ import annotations
 
 import os
+import subprocess
 import sys
+import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT_DIR))
+from PySide6.QtCore import QObject, QThread, Signal, Qt
+from PySide6.QtWidgets import (
+    QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
+    QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPlainTextEdit,
+    QTextBrowser, QPushButton, QStackedWidget, QTableWidget, QTableWidgetItem,
+    QVBoxLayout, QWidget, QComboBox, QFormLayout
+)
 
-from backend.app.core.config import GLOBAL_CONFIG
-from backend.app.database.db import DB
-from backend.app.auth.auth_service import AUTH
-from backend.app.audit.audit_service import AUDIT
-from backend.app.policy.policy_engine import POLICY
-from backend.app.workflows.workflow_engine import WORKFLOW_ENGINE
-from model_manager.manager import MODEL_MGR
-from tools.gateway import TOOL_GATEWAY
-from desktop_gui.styles import QSS_INDUSTRIAL_DARK
+from .styles import apply_app_style, MUTED, GOOD, BAD, ACCENT
 
-# Check for PySide6 / PyQt5 availability
 try:
-    from PySide6.QtCore import Qt, QThread, Signal, QTimer
-    from PySide6.QtGui import QFont, QColor, QIcon
-    from PySide6.QtWidgets import (
-        QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-        QStackedWidget, QLabel, QLineEdit, QPushButton,
-        QTextEdit, QTableWidget, QTableWidgetItem, QProgressBar,
-        QFileDialog, QMessageBox, QTabWidget, QGroupBox, QSplitter, QHeaderView
-    )
-    QT_AVAILABLE = True
-except ImportError:
+    from backend.app.auth.auth_service import AuthService
+except Exception:
+    AuthService = None
+
+try:
+    from backend.app.database.db import DB
+except Exception:
+    DB = None
+
+try:
+    from backend.app.workflows.workflow_engine import WORKFLOW_ENGINE
+except Exception:
+    WORKFLOW_ENGINE = None
+
+try:
+    from backend.app.audit.audit_service import AUDIT
+except Exception:
+    AUDIT = None
+
+try:
+    from model_manager.manager import MODEL_MGR
+except Exception:
+    MODEL_MGR = None
+
+
+def ensure_schema():
+    if DB is not None:
+        try:
+            DB.init_schema()
+        except Exception:
+            pass
+
+
+def open_local_file(path: str):
     try:
-        from PyQt5.QtCore import Qt, QThread, pyqtSignal as Signal, QTimer
-        from PyQt5.QtGui import QFont, QColor, QIcon
-        from PyQt5.QtWidgets import (
-            QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-            QStackedWidget, QLabel, QLineEdit, QPushButton,
-            QTextEdit, QTableWidget, QTableWidgetItem, QProgressBar,
-            QFileDialog, QMessageBox, QTabWidget, QGroupBox, QSplitter, QHeaderView
-        )
-        QT_AVAILABLE = True
-    except ImportError:
-        QT_AVAILABLE = False
+        if sys.platform.startswith("linux"):
+            subprocess.Popen(["xdg-open", path])
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", path])
+        elif sys.platform.startswith("win"):
+            os.startfile(path)  # type: ignore[attr-defined]
+    except Exception:
+        pass
 
 
-class WorkflowWorkerThread(QThread if QT_AVAILABLE else object):
-    """Background worker thread to run agentic workflow without freezing the desktop UI."""
-    if QT_AVAILABLE:
-        progress_signal = Signal(str, str, int)
-        finished_signal = Signal(object)
-        error_signal = Signal(str)
+def esc(text: str) -> str:
+    return (
+        str(text).replace("&", "&amp;").replace("<", "&lt;")
+        .replace(">", "&gt;").replace("\n", "<br>")
+    )
 
-    def __init__(self, task_description: str, user_id: str, role: str, session_id: str):
-        if QT_AVAILABLE:
-            super().__init__()
-        self.task_description = task_description
+
+class ChatInput(QPlainTextEdit):
+    send_requested = Signal()
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            if event.modifiers() & Qt.ShiftModifier:
+                super().keyPressEvent(event)
+            else:
+                if self.toPlainText().strip():
+                    self.send_requested.emit()
+            return
+        super().keyPressEvent(event)
+
+
+class WorkflowWorker(QObject):
+    finished = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, task, user_id, role, session_id):
+        super().__init__()
+        self.task = task
         self.user_id = user_id
         self.role = role
         self.session_id = session_id
 
     def run(self):
         try:
-            def callback(stage, msg, step):
-                if QT_AVAILABLE:
-                    self.progress_signal.emit(stage, msg, step)
-
+            if WORKFLOW_ENGINE is None:
+                raise RuntimeError("Workflow Engine unavailable.")
             state = WORKFLOW_ENGINE.execute_workflow(
-                task_description=self.task_description,
+                task_description=self.task,
                 user_id=self.user_id,
                 role=self.role,
                 session_id=self.session_id,
-                status_callback=callback,
             )
-            if QT_AVAILABLE:
-                self.finished_signal.emit(state)
-        except Exception as e:
-            if QT_AVAILABLE:
-                self.error_signal.emit(str(e))
-
-
-if QT_AVAILABLE:
-    class SovereignWorkbenchGUI(QMainWindow):
-        def __init__(self):
-            super().__init__()
-            self.current_user: Optional[Dict[str, Any]] = None
-            self.current_session_id: Optional[str] = None
-            self.attached_file: Optional[str] = None
-            self.init_ui()
-
-        def init_ui(self):
-            self.setWindowTitle("MRPL - Sovereign Industrial AI Workbench")
-            self.resize(1180, 780)
-            self.setStyleSheet(QSS_INDUSTRIAL_DARK)
-
-            # Central Stacked Widget: 0 = Login Screen, 1 = Main Workbench
-            self.stack = QStackedWidget()
-            self.setCentralWidget(self.stack)
-
-            # Screen 1: Login Screen
-            self.login_widget = self.create_login_screen()
-            self.stack.addWidget(self.login_widget)
-
-            # Screen 2: Main Simplified Workbench
-            self.workbench_widget = self.create_workbench_screen()
-            self.stack.addWidget(self.workbench_widget)
-
-        # -------------------------------------------------------------
-        # 1. LOGIN SCREEN (Employee ID, Password, Authentication Status)
-        # -------------------------------------------------------------
-        def create_login_screen(self) -> QWidget:
-            widget = QWidget()
-            layout = QVBoxLayout(widget)
-            layout.setAlignment(Qt.AlignCenter)
-
-            card = QGroupBox("MANGALORE REFINERY & PETROCHEMICALS LIMITED")
-            card.setFixedSize(440, 420)
-            card_layout = QVBoxLayout(card)
-            card_layout.setSpacing(12)
-            card_layout.setContentsMargins(24, 24, 24, 24)
-
-            sub = QLabel("Sovereign Industrial AI Workbench (SIH26117)\nAir-Gapped Offline Desktop Client")
-            sub.setStyleSheet("color: #94a3b8; font-size: 12px; margin-bottom: 4px;")
-            card_layout.addWidget(sub)
-
-            # Air-gap indicator
-            airgap_label = QLabel("AIR-GAPPED WORKSTATION: ZERO NETWORK EGRESS")
-            airgap_label.setObjectName("SecurityBadge")
-            card_layout.addWidget(airgap_label)
-
-            card_layout.addWidget(QLabel("Employee ID / Username:"))
-            self.login_user_input = QLineEdit()
-            self.login_user_input.setPlaceholderText("e.g., engineer_202 or admin")
-            card_layout.addWidget(self.login_user_input)
-
-            card_layout.addWidget(QLabel("Passphrase:"))
-            self.login_pass_input = QLineEdit()
-            self.login_pass_input.setEchoMode(QLineEdit.Password)
-            self.login_pass_input.setPlaceholderText("Industrial password")
-            self.login_pass_input.returnPressed.connect(self.handle_login)
-            card_layout.addWidget(self.login_pass_input)
-
-            self.login_error_label = QLabel("")
-            self.login_error_label.setStyleSheet("color: #f87171; font-weight: bold; font-size: 11px;")
-            card_layout.addWidget(self.login_error_label)
-
-            btn_login = QPushButton("Authenticate Session")
-            btn_login.clicked.connect(self.handle_login)
-            card_layout.addWidget(btn_login)
-
-            # Quick role presets for operator testing
-            preset_box = QHBoxLayout()
-            preset_label = QLabel("Quick Login:")
-            preset_label.setStyleSheet("color: #64748b; font-size: 11px;")
-            preset_box.addWidget(preset_label)
-
-            roles = [("Operator", "operator_101", "Operator@123!"),
-                     ("Engineer", "engineer_202", "Engineer@456!"),
-                     ("Superintendent", "superintendent_303", "Super@789!"),
-                     ("Admin", "admin", "Admin@MRPL2026!")]
-
-            for title, u, p in roles:
-                btn = QPushButton(title)
-                btn.setStyleSheet("background-color: #1e293b; font-size: 10px; padding: 3px 6px;")
-                btn.clicked.connect(lambda _, un=u, pw=p: self.fill_login(un, pw))
-                preset_box.addWidget(btn)
-
-            card_layout.addLayout(preset_box)
-            layout.addWidget(card)
-            return widget
-
-        def fill_login(self, username, password):
-            self.login_user_input.setText(username)
-            self.login_pass_input.setText(password)
-
-        def handle_login(self):
-            username = self.login_user_input.text().strip()
-            password = self.login_pass_input.text().strip()
-
-            if not username or not password:
-                self.login_error_label.setText("Please enter username and password.")
-                return
-
-            res = AUTH.login(username, password)
-            if res["success"]:
-                self.current_user = res["user"]
-                self.current_session_id = res["session_id"]
-                self.login_error_label.setText("")
-                self.login_pass_input.clear()
-                self.update_header_user_info()
-                self.stack.setCurrentIndex(1)
-                self.refresh_all_views()
-            else:
-                self.login_error_label.setText(res.get("error", "Authentication failed."))
-
-        # -------------------------------------------------------------
-        # 2. MAIN SIMPLIFIED WORKBENCH (CHAT, FILES, ADMIN)
-        # -------------------------------------------------------------
-        def create_workbench_screen(self) -> QWidget:
-            widget = QWidget()
-            main_layout = QVBoxLayout(widget)
-            main_layout.setContentsMargins(10, 10, 10, 10)
-            main_layout.setSpacing(6)
-
-            # Compact Top Header: Security, User Info, Logout
-            header = self.create_top_header()
-            main_layout.addLayout(header)
-
-            # 3 Top-Level Tabs: CHAT, FILES, ADMIN
-            self.tabs = QTabWidget()
-            self.chat_tab = self.create_chat_tab()
-            self.files_tab = self.create_files_tab()
-            self.admin_tab = self.create_admin_tab()
-
-            self.tabs.addTab(self.chat_tab, "CHAT")
-            self.tabs.addTab(self.files_tab, "FILES")
-            self.tabs.addTab(self.admin_tab, "ADMIN")
-
-            main_layout.addWidget(self.tabs)
-            return widget
-
-        def create_top_header(self) -> QHBoxLayout:
-            layout = QHBoxLayout()
-
-            logo_label = QLabel("MRPL AI WORKBENCH")
-            logo_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #38bdf8;")
-            layout.addWidget(logo_label)
-
-            layout.addSpacing(15)
-
-            # Security Status Badges
-            self.header_airgap_badge = QLabel("LOCAL ONLY (0 EGRESS)")
-            self.header_airgap_badge.setObjectName("SecurityBadge")
-            layout.addWidget(self.header_airgap_badge)
-
-            self.header_policy_badge = QLabel("POLICY: DEFAULT-DENY")
-            self.header_policy_badge.setObjectName("SecurityBadge")
-            layout.addWidget(self.header_policy_badge)
-
-            self.header_audit_badge = QLabel("AUDIT: SHA-256")
-            self.header_audit_badge.setObjectName("SecurityBadge")
-            layout.addWidget(self.header_audit_badge)
-
-            layout.addStretch()
-
-            # User Info Label
-            self.header_user_label = QLabel("User: Anonymous | Role: GUEST")
-            self.header_user_label.setStyleSheet("color: #cbd5e1; font-weight: 600; font-size: 12px;")
-            layout.addWidget(self.header_user_label)
-
-            layout.addSpacing(10)
-
-            # Logout Button
-            btn_logout = QPushButton("Logout")
-            btn_logout.setObjectName("DangerButton")
-            btn_logout.setFixedSize(70, 26)
-            btn_logout.clicked.connect(self.handle_logout)
-            layout.addWidget(btn_logout)
-
-            return layout
-
-        def update_header_user_info(self):
-            if self.current_user:
-                u = self.current_user
-                self.header_user_label.setText(f"{u['full_name']} [{u['role']}] - {u['department']}")
-                # Admin tab is strictly visible only to ADMIN role
-                is_admin = u["role"] == "ADMIN"
-                self.tabs.setTabVisible(2, is_admin)
-
-        def handle_logout(self):
-            if self.current_session_id:
-                AUTH.logout(self.current_session_id)
-            self.current_user = None
-            self.current_session_id = None
-            self.attached_file = None
-            self.stack.setCurrentIndex(0)
-
-        # -------------------------------------------------------------
-        # TAB 1: CHAT (Conversation + Compact Workflow Side Panel)
-        # -------------------------------------------------------------
-        def create_chat_tab(self) -> QWidget:
-            widget = QWidget()
-            layout = QHBoxLayout(widget)
-            layout.setContentsMargins(4, 4, 4, 4)
-            layout.setSpacing(8)
-
-            # Left Pane: Conversation, input, attached file, presets
-            left_pane = QVBoxLayout()
-
-            self.chat_history = QTextEdit()
-            self.chat_history.setReadOnly(True)
-            self.chat_history.setStyleSheet("background-color: #0b0f17; font-family: sans-serif; font-size: 12px; line-height: 1.4;")
-            left_pane.addWidget(self.chat_history)
-
-            # Attached File indicator bar
-            attach_bar = QHBoxLayout()
-            self.attach_label = QLabel("Attached File: None")
-            self.attach_label.setStyleSheet("color: #94a3b8; font-size: 11px;")
-            attach_bar.addWidget(self.attach_label)
-
-            btn_attach = QPushButton("Attach Local File...")
-            btn_attach.setStyleSheet("background-color: #1e293b; font-size: 11px; padding: 3px 8px;")
-            btn_attach.clicked.connect(self.attach_local_file)
-            attach_bar.addWidget(btn_attach)
-
-            btn_clear_attach = QPushButton("Clear")
-            btn_clear_attach.setStyleSheet("background-color: #1e293b; font-size: 11px; padding: 3px 6px;")
-            btn_clear_attach.clicked.connect(self.clear_attached_file)
-            attach_bar.addWidget(btn_clear_attach)
-            attach_bar.addStretch()
-
-            left_pane.addLayout(attach_bar)
-
-            # Message Input & Send
-            input_box = QHBoxLayout()
-            self.prompt_input = QLineEdit()
-            self.prompt_input.setPlaceholderText("Ask a question or enter technical directive (e.g., 'Audit inspection report for E-1102')...")
-            self.prompt_input.returnPressed.connect(self.run_task)
-            input_box.addWidget(self.prompt_input)
-
-            self.btn_send = QPushButton("Send")
-            self.btn_send.setFixedSize(80, 32)
-            self.btn_send.clicked.connect(self.run_task)
-            input_box.addWidget(self.btn_send)
-            left_pane.addLayout(input_box)
-
-            # Quick action demos
-            demo_bar = QHBoxLayout()
-            demo_label = QLabel("Quick Demos:")
-            demo_label.setStyleSheet("color: #64748b; font-size: 11px;")
-            demo_bar.addWidget(demo_label)
-
-            demos = [
-                ("Inspection Audit (API 510)", "Audit scanned ultrasonic thickness inspection report for crude preheat heat exchanger E-1102 and generate official approval note."),
-                ("Thermal Efficiency", "Analyze sensor log spreadsheet and compute heat duty and thermal efficiency for Unit 3."),
-                ("Security Block Test", "Delete production database and wipe audit records."),
-            ]
-            for name, prompt_text in demos:
-                btn = QPushButton(name)
-                btn.setStyleSheet("background-color: #1e293b; font-size: 10px; padding: 3px 6px;")
-                btn.clicked.connect(lambda _, pt=prompt_text: self.set_prompt_and_run(pt))
-                demo_bar.addWidget(btn)
-
-            left_pane.addLayout(demo_bar)
-            layout.addLayout(left_pane, 3)
-
-            # Right Pane: Compact Workflow & Activity Side Panel
-            right_pane = QVBoxLayout()
-            wf_group = QGroupBox("CURRENT WORKFLOW & ACTIVITY")
-            wf_layout = QVBoxLayout(wf_group)
-            wf_layout.setSpacing(8)
-
-            # Architecture Pipeline Indicator
-            pipeline_box = QGroupBox("ARCHITECTURE PIPELINE")
-            pipeline_box.setStyleSheet("font-size: 10px; color: #64748b;")
-            pl_layout = QVBoxLayout(pipeline_box)
-            self.pipeline_label = QLabel("Auth → RBAC → Policy → Security →\nOrganizer → Model Mgr → Worker → Tool → Verify → Audit")
-            self.pipeline_label.setStyleSheet("color: #38bdf8; font-size: 10px; font-family: monospace;")
-            pl_layout.addWidget(self.pipeline_label)
-            wf_layout.addWidget(pipeline_box)
-
-            # Current Task Box
-            wf_layout.addWidget(QLabel("Current Task:"))
-            self.wf_task_label = QLabel("Idle - Ready for input")
-            self.wf_task_label.setWordWrap(True)
-            self.wf_task_label.setStyleSheet("color: #cbd5e1; font-size: 11px; background-color: #0b0f17; padding: 6px; border-radius: 4px;")
-            wf_layout.addWidget(self.wf_task_label)
-
-            # Current Step
-            wf_layout.addWidget(QLabel("Current Step:"))
-            self.wf_step_label = QLabel("None")
-            self.wf_step_label.setStyleSheet("color: #38bdf8; font-weight: bold; font-size: 11px;")
-            wf_layout.addWidget(self.wf_step_label)
-
-            # Selected Specialist Worker
-            wf_layout.addWidget(QLabel("Selected Worker:"))
-            self.wf_worker_label = QLabel("organizer (resident)")
-            self.wf_worker_label.setStyleSheet("color: #a78bfa; font-weight: bold; font-size: 11px;")
-            wf_layout.addWidget(self.wf_worker_label)
-
-            # Tool Currently Executing
-            wf_layout.addWidget(QLabel("Tool Executing:"))
-            self.wf_tool_label = QLabel("None")
-            self.wf_tool_label.setStyleSheet("color: #fbbf24; font-size: 11px;")
-            wf_layout.addWidget(self.wf_tool_label)
-
-            # Status (Success/Failure/Retry)
-            wf_layout.addWidget(QLabel("Status:"))
-            self.wf_status_badge = QLabel("IDLE")
-            self.wf_status_badge.setStyleSheet("color: #34d399; font-weight: bold; font-size: 11px; background-color: #064e3b; padding: 3px 6px; border-radius: 4px;")
-            wf_layout.addWidget(self.wf_status_badge)
-
-            # Workflow Progress Bar
-            self.workflow_progress = QProgressBar()
-            self.workflow_progress.setRange(0, 5)
-            self.workflow_progress.setValue(0)
-            self.workflow_progress.setFormat("Idle")
-            wf_layout.addWidget(self.workflow_progress)
-
-            wf_layout.addStretch()
-            right_pane.addWidget(wf_group)
-
-            layout.addLayout(right_pane, 1)
-            return widget
-
-        def attach_local_file(self):
-            file_path, _ = QFileDialog.getOpenFileName(self, "Select Industrial Document", str(GLOBAL_CONFIG.DOCS_STORAGE_DIR), "All Files (*.*)")
-            if file_path:
-                self.attached_file = file_path
-                self.attach_label.setText(f"Attached File: {Path(file_path).name}")
-
-        def clear_attached_file(self):
-            self.attached_file = None
-            self.attach_label.setText("Attached File: None")
-
-        def set_prompt_and_run(self, prompt_text: str):
-            self.prompt_input.setText(prompt_text)
-            self.run_task()
-
-        def run_task(self):
-            prompt = self.prompt_input.text().strip()
-            if not prompt:
-                return
-
-            if not self.current_user:
-                QMessageBox.warning(self, "Session Expired", "Please authenticate first.")
-                return
-
-            if self.attached_file:
-                prompt = f"[Attached: {Path(self.attached_file).name}] {prompt}"
-
-            self.prompt_input.clear()
-            self.btn_send.setEnabled(False)
-            self.chat_history.append(f"\n<b>[{self.current_user['username']}]:</b>\n{prompt}\n")
-
-            # Update side panel
-            self.wf_task_label.setText(prompt[:120] + "..." if len(prompt) > 120 else prompt)
-            self.wf_step_label.setText("Step 1: Security & Classification")
-            self.wf_worker_label.setText("organizer")
-            self.wf_tool_label.setText("policy_evaluator")
-            self.wf_status_badge.setText("RUNNING")
-            self.wf_status_badge.setStyleSheet("color: #38bdf8; font-weight: bold; background-color: #0c4a6e; padding: 3px 6px; border-radius: 4px;")
-
-            # Launch background worker thread
-            self.thread = WorkflowWorkerThread(
-                task_description=prompt,
-                user_id=self.current_user["user_id"],
-                role=self.current_user["role"],
-                session_id=self.current_session_id or "sess_desktop",
+            self.finished.emit(state)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class LoginWidget(QWidget):
+    authenticated = Signal(dict)
+
+    def __init__(self):
+        super().__init__()
+        root = QHBoxLayout(self)
+        root.setContentsMargins(70, 55, 70, 55)
+        root.setSpacing(24)
+
+        left = QFrame()
+        left.setObjectName("panel")
+        ll = QVBoxLayout(left)
+        ll.setContentsMargins(34, 34, 34, 34)
+
+        brand = QLabel("SOVEREIGN\nINDUSTRIAL AI")
+        brand.setStyleSheet(f"font-size:30px;font-weight:700;color:{ACCENT};")
+        ll.addWidget(brand)
+
+        sub = QLabel("Local intelligence for confidential industrial operations")
+        sub.setWordWrap(True)
+        sub.setStyleSheet(f"color:{MUTED};font-size:12px;")
+        ll.addWidget(sub)
+        ll.addStretch()
+
+        for text in ("● LOCAL RUNTIME", "● SECURE SESSION", "NO CLOUD DATA PATH"):
+            lab = QLabel(text)
+            lab.setStyleSheet(
+                f"color:{GOOD if '●' in text else MUTED};font-weight:700;"
+                if '●' in text else f"color:{MUTED};font-size:10px;"
             )
-            self.thread.progress_signal.connect(self.on_workflow_progress)
-            self.thread.finished_signal.connect(self.on_workflow_finished)
-            self.thread.error_signal.connect(self.on_workflow_error)
-            self.thread.start()
+            ll.addWidget(lab)
 
-        def on_workflow_progress(self, stage: str, msg: str, step: int):
-            self.workflow_progress.setValue(step)
-            self.workflow_progress.setFormat(f"Step {step}: {stage}")
-            self.wf_step_label.setText(f"Step {step}: {stage}")
-            self.chat_history.append(f"<span style='color: #64748b;'>&rarr; [{stage}]: {msg}</span>")
+        right = QFrame()
+        right.setObjectName("panel")
+        rl = QVBoxLayout(right)
+        rl.setContentsMargins(34, 34, 34, 34)
 
-            # Auto update active worker and executing tool based on stage
-            if "OCR" in msg or "scan" in msg.lower():
-                self.wf_worker_label.setText("vision (auto-selected)")
-                self.wf_tool_label.setText("ocr")
-            elif "calculation" in msg.lower() or "calc" in msg.lower() or "sandbox" in msg.lower():
-                self.wf_worker_label.setText("coding (auto-selected)")
-                self.wf_tool_label.setText("sandbox_exec")
-            elif "sop" in msg.lower() or "rag" in msg.lower():
-                self.wf_worker_label.setText("document (auto-selected)")
-                self.wf_tool_label.setText("rag_search")
-            elif "generate" in msg.lower() or "docx" in msg.lower():
-                self.wf_worker_label.setText("document (auto-selected)")
-                self.wf_tool_label.setText("doc_generate")
+        title = QLabel("Welcome back")
+        title.setObjectName("title")
+        rl.addWidget(title)
+
+        hint = QLabel("Sign in to your local workbench.")
+        hint.setStyleSheet(f"color:{MUTED};")
+        rl.addWidget(hint)
+        rl.addSpacing(18)
+
+        rl.addWidget(QLabel("USERNAME"))
+        self.username = QLineEdit()
+        self.username.setPlaceholderText("mukul")
+        rl.addWidget(self.username)
+
+        rl.addSpacing(8)
+        rl.addWidget(QLabel("PASSWORD"))
+        self.password = QLineEdit()
+        self.password.setEchoMode(QLineEdit.Password)
+        self.password.setPlaceholderText("Password")
+        rl.addWidget(self.password)
+
+        self.error = QLabel()
+        self.error.setWordWrap(True)
+        self.error.setStyleSheet(f"color:{BAD};")
+        rl.addWidget(self.error)
+
+        button = QPushButton("SIGN IN")
+        button.setObjectName("primary")
+        button.clicked.connect(self.login)
+        rl.addSpacing(6)
+        rl.addWidget(button)
+        rl.addStretch()
+
+        root.addWidget(left, 1)
+        root.addWidget(right, 1)
+
+    def login(self):
+        ensure_schema()
+        if not self.username.text().strip() or not self.password.text():
+            self.error.setText("Enter username and password.")
+            return
+
+        if AuthService is None:
+            self.error.setText("Authentication service unavailable.")
+            return
+
+        try:
+            result = AuthService().login(
+                self.username.text().strip(),
+                self.password.text(),
+            )
+            if result.get("success"):
+                self.authenticated.emit(result)
             else:
-                self.wf_worker_label.setText("organizer")
+                self.error.setText(result.get("error", "Invalid credentials"))
+        except Exception as exc:
+            self.error.setText(str(exc))
 
-        def on_workflow_finished(self, state):
-            self.btn_send.setEnabled(True)
-            self.workflow_progress.setValue(5)
-            self.workflow_progress.setFormat("Complete")
 
-            status = state.status
-            if status == "COMPLETED":
-                self.wf_status_badge.setText("SUCCESS")
-                self.wf_status_badge.setStyleSheet("color: #34d399; font-weight: bold; background-color: #064e3b; padding: 3px 6px; border-radius: 4px;")
-            else:
-                self.wf_status_badge.setText("BLOCKED / DENIED")
-                self.wf_status_badge.setStyleSheet("color: #f87171; font-weight: bold; background-color: #7f1d1d; padding: 3px 6px; border-radius: 4px;")
+class SovereignWorkbenchGUI(QMainWindow):
+    def __init__(self, user: Optional[dict] = None):
+        super().__init__()
+        self.user = user or {
+            "user_id": "usr_local",
+            "username": "local",
+            "role": "GRADE_2",
+        }
+        self.current_state = None
+        self.attached_file = None
 
-            self.wf_tool_label.setText("None (Idle)")
-            self.chat_history.append(f"\n<b style='color: #38bdf8;'>[Assistant Response]:</b>\n{state.final_response}\n" + "-"*40)
-            self.refresh_all_views()
+        self.setWindowTitle("Sovereign Industrial AI Workbench")
+        self.resize(1360, 820)
+        self.setMinimumSize(1050, 680)
+        self._build()
+        self._refresh_all()
 
-        def on_workflow_error(self, err_msg: str):
-            self.btn_send.setEnabled(True)
-            self.workflow_progress.setFormat("Error")
-            self.wf_status_badge.setText("FAILED")
-            self.wf_status_badge.setStyleSheet("color: #f87171; font-weight: bold; background-color: #7f1d1d; padding: 3px 6px; border-radius: 4px;")
-            self.chat_history.append(f"\n<span style='color: #f87171;'><b>[Error]:</b> {err_msg}</span>")
+    def panel(self):
+        frame = QFrame()
+        frame.setObjectName("panel")
+        return frame
 
-        # -------------------------------------------------------------
-        # TAB 2: FILES (Uploaded Files & Generated Technical Deliverables)
-        # -------------------------------------------------------------
-        def create_files_tab(self) -> QWidget:
-            widget = QWidget()
-            layout = QVBoxLayout(widget)
-            layout.setContentsMargins(6, 6, 6, 6)
-            layout.setSpacing(8)
+    def _build(self):
+        root = QWidget()
+        self.setCentralWidget(root)
+        shell = QVBoxLayout(root)
+        shell.setContentsMargins(12, 12, 12, 10)
+        shell.setSpacing(10)
 
-            splitter = QSplitter(Qt.Vertical)
+        shell.addWidget(self._header())
 
-            # Section A: Uploaded & Ingested Files
-            up_group = QGroupBox("UPLOADED & INGESTED INDUSTRIAL FILES")
-            up_layout = QVBoxLayout(up_group)
+        body = QHBoxLayout()
+        body.setSpacing(10)
+        body.addWidget(self._sidebar())
 
-            up_btn_bar = QHBoxLayout()
-            btn_open = QPushButton("Open Local File...")
-            btn_open.clicked.connect(self.open_local_file_dialog)
-            up_btn_bar.addWidget(btn_open)
-            up_btn_bar.addStretch()
-            up_layout.addLayout(up_btn_bar)
+        self.pages = QStackedWidget()
+        self.pages.addWidget(self._chat_page())
+        self.pages.addWidget(self._files_page())
+        self.pages.addWidget(self._workflow_page())
+        self.pages.addWidget(self._models_page())
+        self.pages.addWidget(self._audit_page())
+        body.addWidget(self.pages, 1)
 
-            self.file_table = QTableWidget(0, 5)
-            self.file_table.setHorizontalHeaderLabels(["Filename", "Size (KB)", "Sensitivity", "Integrity", "Action"])
-            self.file_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            up_layout.addWidget(self.file_table)
-            splitter.addWidget(up_group)
+        shell.addLayout(body, 1)
 
-            # Section B: Generated Technical Deliverables
-            gen_group = QGroupBox("GENERATED TECHNICAL DELIVERABLES (VERIFIED)")
-            gen_layout = QVBoxLayout(gen_group)
+        footer = self.panel()
+        fl = QHBoxLayout(footer)
+        fl.setContentsMargins(12, 6, 12, 6)
 
-            self.artifacts_table = QTableWidget(0, 5)
-            self.artifacts_table.setHorizontalHeaderLabels(["Deliverable Title", "Format", "Size", "Verification State", "Local Action"])
-            self.artifacts_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            gen_layout.addWidget(self.artifacts_table)
-            splitter.addWidget(gen_group)
+        self.status = QLabel("● LOCAL • READY")
+        self.status.setStyleSheet(f"color:{GOOD};font-weight:700;")
+        fl.addWidget(self.status)
+        fl.addStretch()
 
-            layout.addWidget(splitter)
-            return widget
+        self.resource = QLabel()
+        self.resource.setStyleSheet(
+            f"color:{MUTED};font-family:monospace;font-size:10px;"
+        )
+        fl.addWidget(self.resource)
+        shell.addWidget(footer)
 
-        def open_local_file_dialog(self):
-            file_path, _ = QFileDialog.getOpenFileName(self, "Open Local Industrial File", str(GLOBAL_CONFIG.DOCS_STORAGE_DIR), "All Files (*.*)")
-            if file_path:
-                p = Path(file_path)
-                AUDIT.log_event(
-                    event_type="FILE_OPENED",
-                    action="open_local_file",
-                    status="SUCCESS",
-                    user_id=self.current_user["user_id"] if self.current_user else None,
-                    role=self.current_user["role"] if self.current_user else "GUEST",
-                    resource=f"file:{p.name}",
-                    details={"path": str(p), "size": p.stat().st_size},
-                )
-                self.refresh_files_table()
+    def _header(self):
+        frame = self.panel()
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(14, 9, 14, 9)
 
-        def refresh_files_table(self):
-            docs_dir = GLOBAL_CONFIG.DOCS_STORAGE_DIR
-            files = list(docs_dir.glob("*.*"))
-            self.file_table.setRowCount(len(files))
-            for row, f in enumerate(files):
-                self.file_table.setItem(row, 0, QTableWidgetItem(f.name))
-                self.file_table.setItem(row, 1, QTableWidgetItem(str(round(f.stat().st_size / 1024, 2))))
-                self.file_table.setItem(row, 2, QTableWidgetItem("ROLE_RESTRICTED" if "log" in f.name else "PUBLIC_INTERNAL"))
-                self.file_table.setItem(row, 3, QTableWidgetItem("SHA-256 Validated"))
-                self.file_table.setItem(row, 4, QTableWidgetItem("Ready on Disk"))
+        title = QLabel("SOVEREIGN INDUSTRIAL AI WORKBENCH")
+        title.setStyleSheet("font-size:14px;font-weight:700;")
+        layout.addWidget(title)
 
-        def refresh_artifacts_table(self):
-            art_dir = GLOBAL_CONFIG.ARTIFACTS_DIR
-            files = list(art_dir.glob("*.*"))
-            self.artifacts_table.setRowCount(len(files))
-            for row, f in enumerate(files):
-                self.artifacts_table.setItem(row, 0, QTableWidgetItem(f.stem.replace("_", " ").title()))
-                self.artifacts_table.setItem(row, 1, QTableWidgetItem(f.suffix.upper()))
-                self.artifacts_table.setItem(row, 2, QTableWidgetItem(f"{f.stat().st_size} bytes"))
-                self.artifacts_table.setItem(row, 3, QTableWidgetItem("PASS (Schema & Physics Verified)"))
-                self.artifacts_table.setItem(row, 4, QTableWidgetItem("Saved Locally"))
+        local = QLabel("LOCAL")
+        local.setStyleSheet(
+            f"color:{ACCENT};background:#edf4ff;padding:4px 8px;"
+            "border-radius:6px;font-weight:700;"
+        )
+        layout.addWidget(local)
+        layout.addStretch()
 
-        # -------------------------------------------------------------
-        # TAB 3: ADMIN (Users, Roles & Policies, Models, Audit)
-        # -------------------------------------------------------------
-        def create_admin_tab(self) -> QWidget:
-            widget = QWidget()
-            layout = QVBoxLayout(widget)
-            layout.setContentsMargins(6, 6, 6, 6)
+        name = self.user.get("username", self.user.get("user_id", "local"))
+        role = self.user.get("role", "UNKNOWN")
+        who = QLabel(f"{name}  •  {role}")
+        who.setStyleSheet(f"color:{MUTED};font-family:monospace;")
+        layout.addWidget(who)
+        return frame
 
-            admin_tabs = QTabWidget()
+    def _sidebar(self):
+        frame = self.panel()
+        frame.setFixedWidth(170)
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(8, 12, 8, 12)
 
-            # Subtab 1: Users
-            users_widget = QWidget()
-            u_layout = QVBoxLayout(users_widget)
-            self.users_table = QTableWidget(0, 5)
-            self.users_table.setHorizontalHeaderLabels(["Username", "Full Name", "Department", "Clearance Role", "Status"])
-            self.users_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            u_layout.addWidget(self.users_table)
-            admin_tabs.addTab(users_widget, "Users")
+        section = QLabel("WORKBENCH")
+        section.setObjectName("section")
+        layout.addWidget(section)
+        layout.addSpacing(5)
 
-            # Subtab 2: Roles & Policies
-            policy_widget = QWidget()
-            p_layout = QVBoxLayout(policy_widget)
-            self.policies_table = QTableWidget(0, 5)
-            self.policies_table.setHorizontalHeaderLabels(["Policy ID", "Description", "Effect", "Min Clearance", "Status"])
-            self.policies_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            p_layout.addWidget(self.policies_table)
-            admin_tabs.addTab(policy_widget, "Roles & Policies")
+        self.nav_buttons = []
+        for text, index in [
+            ("Chat", 0), ("Files", 1), ("Workflow", 2),
+            ("Models", 3), ("Audit", 4)
+        ]:
+            button = QPushButton(text)
+            button.setObjectName("nav")
+            button.setProperty("active", index == 0)
+            button.clicked.connect(
+                lambda _, i=index, b=button: self._switch(i, b)
+            )
+            self.nav_buttons.append(button)
+            layout.addWidget(button)
 
-            # Subtab 3: Models (Auto-managed status & model registry, no manual hardware config)
-            model_widget = QWidget()
-            m_layout = QVBoxLayout(model_widget)
-            info_label = QLabel("Open-Weight Model Registry (Resources and model swapping managed automatically by backend)")
-            info_label.setStyleSheet("color: #94a3b8; font-size: 11px; margin-bottom: 4px;")
-            m_layout.addWidget(info_label)
+        layout.addStretch()
 
-            self.models_table = QTableWidget(0, 5)
-            self.models_table.setHorizontalHeaderLabels(["Worker Role", "Model ID", "Quantization", "Runtime State", "Automated Policy"])
-            self.models_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            m_layout.addWidget(self.models_table)
-            admin_tabs.addTab(model_widget, "Models")
+        note = QLabel("LOCAL ONLY\nBackend authorization\nAudit protected")
+        note.setStyleSheet(f"color:{MUTED};font-size:10px;padding:7px;")
+        layout.addWidget(note)
 
-            # Subtab 4: Audit Logs
-            audit_widget = QWidget()
-            a_layout = QVBoxLayout(audit_widget)
-            aud_bar = QHBoxLayout()
-            btn_verify = QPushButton("Verify Audit Hash Chain")
-            btn_verify.clicked.connect(self.verify_audit_chain)
-            aud_bar.addWidget(btn_verify)
-            aud_bar.addStretch()
-            a_layout.addLayout(aud_bar)
+        return frame
 
-            self.audit_table = QTableWidget(0, 6)
-            self.audit_table.setHorizontalHeaderLabels(["Timestamp (UTC)", "Event", "User", "Role", "Resource", "Status"])
-            self.audit_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            a_layout.addWidget(self.audit_table)
-            admin_tabs.addTab(audit_widget, "Audit")
+    def _switch(self, index, button):
+        self.pages.setCurrentIndex(index)
+        for b in self.nav_buttons:
+            b.setProperty("active", b is button)
+            b.style().unpolish(b)
+            b.style().polish(b)
+        self._refresh_all()
 
-            layout.addWidget(admin_tabs)
-            return widget
+    def _chat_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(10)
 
-        def verify_audit_chain(self):
-            res = AUDIT.verify_integrity()
-            if res["verified"]:
-                QMessageBox.information(self, "Audit Integrity", f"Audit log verified: {res['total_records_checked']} records verified with forward SHA-256 hash chaining.")
-            else:
-                QMessageBox.critical(self, "Integrity Failure", f"Tamper detected: {res['error']}")
+        top = QHBoxLayout()
+        box = QVBoxLayout()
+        title = QLabel("Chat")
+        title.setObjectName("title")
+        box.addWidget(title)
+        subtitle = QLabel("Local AI workspace · your data stays on this machine")
+        subtitle.setObjectName("subtitle")
+        box.addWidget(subtitle)
+        top.addLayout(box)
+        top.addStretch()
 
-        def refresh_admin_tables(self):
-            # Users - matches actual schema: users table has 'status' column
+        self.mode = QComboBox()
+        self.mode.addItems(["Workflow", "General"])
+        self.mode.setFixedWidth(120)
+        top.addWidget(self.mode)
+
+        local = QLabel("● LOCAL")
+        local.setStyleSheet(f"color:{GOOD};font-weight:700;padding-left:6px;")
+        top.addWidget(local)
+        layout.addLayout(top)
+
+        history = self.panel()
+        hl = QVBoxLayout(history)
+        hl.setContentsMargins(8, 8, 8, 8)
+
+        self.output = QTextBrowser()
+        self.output.setOpenExternalLinks(False)
+        self.output.setPlaceholderText("Start a conversation…")
+        self.output.setStyleSheet("QTextBrowser { border:0; background:transparent; }")
+        hl.addWidget(self.output, 1)
+        layout.addWidget(history, 1)
+
+        composer = self.panel()
+        cl = QVBoxLayout(composer)
+        cl.setContentsMargins(10, 10, 10, 10)
+
+        self.task_input = ChatInput()
+        self.task_input.setPlaceholderText(
+            "Message your local AI…   Enter to send · Shift+Enter for new line"
+        )
+        self.task_input.setFixedHeight(90)
+        self.task_input.send_requested.connect(self._run)
+        cl.addWidget(self.task_input)
+
+        row = QHBoxLayout()
+        attach = QPushButton("＋ Attach")
+        attach.clicked.connect(self._attach)
+        row.addWidget(attach)
+
+        self.file_label = QLabel("No file attached")
+        self.file_label.setStyleSheet(f"color:{MUTED};font-size:10px;")
+        row.addWidget(self.file_label)
+        row.addStretch()
+
+        hint = QLabel("Enter ↵")
+        hint.setStyleSheet(f"color:{MUTED};font-size:10px;")
+        row.addWidget(hint)
+
+        self.run_button = QPushButton("Send")
+        self.run_button.setObjectName("primary")
+        self.run_button.setMinimumWidth(88)
+        self.run_button.clicked.connect(self._run)
+        row.addWidget(self.run_button)
+
+        cl.addLayout(row)
+        layout.addWidget(composer)
+        return page
+
+    def _attach(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Attach local file", str(Path.home()),
+            "Documents (*.pdf *.docx *.xlsx *.pptx *.txt);;Images (*.png *.jpg *.jpeg *.webp);;All files (*)"
+        )
+        if path:
+            self.attached_file = path
+            self.file_label.setText(Path(path).name)
+
+    def _run(self):
+        text = self.task_input.toPlainText().strip()
+        if not text:
+            return
+
+        user_text = esc(text)
+        task = text
+        if self.attached_file:
+            task += f"\n\nAttached local file: {self.attached_file}"
+
+        self.output.append(
+            f'<div style="margin:12px 8px 8px 110px; padding:12px;'
+            f'background:#edf4ff; border:1px solid #d4e3fd; border-radius:12px;">'
+            f'<b style="color:{ACCENT};font-size:10px;">YOU</b>'
+            f'<div style="margin-top:6px;">{user_text}</div></div>'
+        )
+        self.task_input.clear()
+        self.run_button.setEnabled(False)
+        self.status.setText("● THINKING")
+
+        uid = self.user.get("user_id", self.user.get("username", "usr_local"))
+        role = self.user.get("role", "GRADE_2")
+        sid = self.user.get("session_id", f"gui_{uuid.uuid4().hex[:10]}")
+
+        if self.mode.currentText() == "General":
             try:
-                with DB.get_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT username, full_name, department, role, status FROM users")
-                    users = cursor.fetchall()
-                    self.users_table.setRowCount(len(users))
-                    for row, u in enumerate(users):
-                        self.users_table.setItem(row, 0, QTableWidgetItem(u["username"]))
-                        self.users_table.setItem(row, 1, QTableWidgetItem(u["full_name"]))
-                        self.users_table.setItem(row, 2, QTableWidgetItem(u["department"]))
-                        self.users_table.setItem(row, 3, QTableWidgetItem(u["role"]))
-                        self.users_table.setItem(row, 4, QTableWidgetItem(u["status"]))
+                result = MODEL_MGR.run_worker(
+                    "general", task, request_id=sid, max_tokens=512
+                )
+                content = esc(getattr(result, "content", ""))
+                self.output.append(
+                    f'<div style="margin:8px 110px 14px 8px; padding:12px;'
+                    f'background:white; border:1px solid #e4e8ee; border-radius:12px;">'
+                    f'<b style="color:{MUTED};font-size:10px;">LOCAL AI · GENERAL</b>'
+                    f'<div style="margin-top:6px;">{content}</div></div>'
+                )
+            except Exception as exc:
+                self.output.append(
+                    f'<div style="margin:8px 110px 14px 8px; padding:12px;'
+                    f'background:#fff0f2; border:1px solid #f3cbd0; border-radius:12px;">'
+                    f'<b style="color:{BAD};">ERROR</b><div>{esc(exc)}</div></div>'
+                )
+            self.run_button.setEnabled(True)
+            self.status.setText("● LOCAL • READY")
+            return
 
-                    # Policies - matches actual schema: policies table has name, decision, role
-                    cursor.execute("SELECT policy_id, name, decision, role, conditions FROM policies")
-                    policies = cursor.fetchall()
-                    self.policies_table.setRowCount(len(policies))
-                    for row, p in enumerate(policies):
-                        self.policies_table.setItem(row, 0, QTableWidgetItem(p["policy_id"]))
-                        self.policies_table.setItem(row, 1, QTableWidgetItem(p["name"]))
-                        self.policies_table.setItem(row, 2, QTableWidgetItem(p["decision"]))
-                        self.policies_table.setItem(row, 3, QTableWidgetItem(p["role"]))
-                        self.policies_table.setItem(row, 4, QTableWidgetItem("ACTIVE"))
+        self.output.append(
+            f'<div style="margin:8px 110px 8px 8px; padding:10px 12px;'
+            f'background:#fbfcfe; border:1px solid #e4e8ee; border-radius:10px;'
+            f'color:{MUTED};">Running local workflow…</div>'
+        )
+
+        self.thread = QThread()
+        self.worker = WorkflowWorker(task, uid, role, sid)
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self._workflow_done)
+        self.worker.failed.connect(self._workflow_failed)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.failed.connect(self.thread.quit)
+        self.thread.finished.connect(lambda: self.run_button.setEnabled(True))
+        self.thread.start()
+
+    def _workflow_failed(self, message):
+        self.output.append(
+            f'<div style="margin:8px 110px 14px 8px; padding:12px;'
+            f'background:#fff0f2; border:1px solid #f3cbd0; border-radius:12px;">'
+            f'<b style="color:{BAD};">WORKFLOW FAILED</b>'
+            f'<div style="margin-top:5px;">{esc(message)}</div></div>'
+        )
+        self.status.setText("● LOCAL • ERROR")
+        self._refresh_all()
+
+    def _workflow_done(self, state):
+        self.current_state = state
+
+        status = getattr(state, "status", "UNKNOWN")
+        completed = getattr(state, "completed_steps", [])
+        failed = getattr(state, "failed_steps", [])
+        verification = getattr(state, "verification_summary", {})
+        final = getattr(state, "final_response", "")
+        artifacts = getattr(state, "generated_artifacts", [])
+
+        color = GOOD if str(status).upper() == "COMPLETED" else BAD
+
+        self.output.append(
+            f'<div style="margin:8px 110px 14px 8px; padding:14px;'
+            f'background:white; border:1px solid #e4e8ee; border-radius:12px;">'
+            f'<b style="color:{color};font-size:10px;">WORKFLOW · {esc(status)}</b>'
+            f'<div style="margin-top:8px;line-height:1.5;">{esc(final)}</div>'
+            f'<div style="margin-top:10px;padding-top:9px;border-top:1px solid #edf0f3;'
+            f'color:{MUTED};font-size:10px;">'
+            f'Steps: {completed} · Verification: {verification.get("overall_status","UNKNOWN")}'
+            f'</div></div>'
+        )
+
+        if artifacts:
+            self.output.append(
+                f'<div style="margin:0 110px 14px 8px; padding:12px 14px;'
+                f'background:#eaf8f1; border:1px solid #c9ead9; border-radius:10px;'
+                f'color:{GOOD};"><b>Artifacts generated</b><br>'
+                f'{"<br>".join(esc(a) for a in map(str, artifacts))}</div>'
+            )
+
+        self.status.setText("● LOCAL • READY")
+        self._refresh_all()
+
+    def _files_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        title = QLabel("Files")
+        title.setObjectName("title")
+        layout.addWidget(title)
+        sub = QLabel("Generated local artifacts.")
+        sub.setObjectName("subtitle")
+        layout.addWidget(sub)
+
+        self.files = QListWidget()
+        self.files.itemDoubleClicked.connect(
+            lambda item: open_local_file(item.data(Qt.UserRole))
+        )
+        layout.addWidget(self.files, 1)
+        return page
+
+    def _refresh_files(self):
+        if not hasattr(self, "files"):
+            return
+        self.files.clear()
+        root = Path("data/artifacts")
+        if not root.exists():
+            return
+        for p in sorted(root.iterdir()):
+            if p.is_file():
+                item = QListWidgetItem(
+                    f"{p.name}    ·    {p.stat().st_size:,} bytes"
+                )
+                item.setData(Qt.UserRole, str(p.resolve()))
+                self.files.addItem(item)
+
+    def _workflow_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        title = QLabel("Workflow")
+        title.setObjectName("title")
+        layout.addWidget(title)
+
+        self.workflow_info = QLabel("No workflow executed.")
+        self.workflow_info.setStyleSheet(f"color:{MUTED};")
+        layout.addWidget(self.workflow_info)
+
+        self.workflow_table = QTableWidget(0, 2)
+        self.workflow_table.setHorizontalHeaderLabels(["STEP", "STATUS"])
+        self.workflow_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.workflow_table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.workflow_table, 1)
+        return page
+
+    def _refresh_workflow(self):
+        if not hasattr(self, "workflow_table"):
+            return
+        self.workflow_table.setRowCount(0)
+        if self.current_state is None:
+            self.workflow_info.setText("No workflow executed.")
+            return
+
+        state = self.current_state
+        status = getattr(state, "status", "UNKNOWN")
+        completed = getattr(state, "completed_steps", [])
+        failed = getattr(state, "failed_steps", [])
+
+        self.workflow_info.setText(
+            f"STATUS {status}  ·  COMPLETED {completed}  ·  FAILED {failed}"
+        )
+
+        for n in completed:
+            r = self.workflow_table.rowCount()
+            self.workflow_table.insertRow(r)
+            self.workflow_table.setItem(r, 0, QTableWidgetItem(str(n)))
+            self.workflow_table.setItem(r, 1, QTableWidgetItem("COMPLETED"))
+
+        for n in failed:
+            r = self.workflow_table.rowCount()
+            self.workflow_table.insertRow(r)
+            self.workflow_table.setItem(r, 0, QTableWidgetItem(str(n)))
+            self.workflow_table.setItem(r, 1, QTableWidgetItem("FAILED"))
+
+    def _models_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        title = QLabel("Models")
+        title.setObjectName("title")
+        layout.addWidget(title)
+        sub = QLabel("Local worker state and active model.")
+        sub.setObjectName("subtitle")
+        layout.addWidget(sub)
+
+        self.models = QTableWidget(0, 3)
+        self.models.setHorizontalHeaderLabels(["WORKER", "STATE", "MODEL"])
+        self.models.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.models.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.models, 1)
+        return page
+
+    def _refresh_models(self):
+        if not hasattr(self, "models"):
+            return
+
+        self.models.setRowCount(0)
+
+        for name in ["organizer", "general", "coding", "vision", "document"]:
+            state = "UNKNOWN"
+            model = ""
+            try:
+                if MODEL_MGR:
+                    state = MODEL_MGR.get_model_state(name)
+                    worker = MODEL_MGR.registry.get_worker(name)
+                    model = getattr(worker, "model_name", "") if worker else ""
+            except Exception as exc:
+                model = str(exc)
+
+            row = self.models.rowCount()
+            self.models.insertRow(row)
+            for c, value in enumerate(
+                [name.upper(), str(state), str(model)]
+            ):
+                self.models.setItem(row, c, QTableWidgetItem(value))
+
+    def _audit_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        title = QLabel("Audit")
+        title.setObjectName("title")
+        layout.addWidget(title)
+
+        self.audit = QListWidget()
+        layout.addWidget(self.audit, 1)
+
+        self.audit_status = QLabel()
+        self.audit_status.setStyleSheet(
+            f"color:{GOOD};font-family:monospace;font-size:10px;"
+        )
+        layout.addWidget(self.audit_status)
+        return page
+
+    def _refresh_audit(self):
+        if not hasattr(self, "audit"):
+            return
+
+        self.audit.clear()
+        if AUDIT is None:
+            self.audit.addItem("Audit service unavailable.")
+            return
+
+        try:
+            result = AUDIT.verify_integrity()
+            self.audit_status.setText(
+                f"CHAIN: {'VALID' if result.get('chain_valid') else 'INVALID'}"
+                f"   ·   RECORDS: {result.get('total_records_checked', 0)}"
+            )
+        except Exception as exc:
+            self.audit_status.setText(f"AUDIT CHECK ERROR: {exc}")
+
+    def _refresh_all(self):
+        self._refresh_files()
+        self._refresh_workflow()
+        self._refresh_models()
+        self._refresh_audit()
+
+        if MODEL_MGR is not None:
+            try:
+                status = MODEL_MGR.get_system_status()
+                self.resource.setText(
+                    f"ACTIVE {len(status.get('active_workers', []))}"
+                    f"  ·  {status.get('vram_current_used_mb', 0)} MB USED"
+                    f"  ·  {status.get('vram_headroom_mb', 0)} MB HEADROOM"
+                )
             except Exception:
                 pass
 
-            # Models - list_workers() returns dicts with worker_type, model_name, capabilities, vram, license
-            workers = MODEL_MGR.registry.list_workers()
-            self.models_table.setRowCount(len(workers))
-            for row, w in enumerate(workers):
-                self.models_table.setItem(row, 0, QTableWidgetItem(w["worker_type"]))
-                self.models_table.setItem(row, 1, QTableWidgetItem(w["model_name"]))
-                self.models_table.setItem(row, 2, QTableWidgetItem(f"{w.get('vram_required_mb', 0)} MB VRAM"))
-                is_loaded = MODEL_MGR.is_loaded(w["worker_type"])
-                self.models_table.setItem(row, 3, QTableWidgetItem("RESIDENT (ACTIVE)" if is_loaded else "STANDBY (LOCAL DISK)"))
-                self.models_table.setItem(row, 4, QTableWidgetItem("PINNED" if w["worker_type"] == "organizer" else "AUTO-SWAP ON DEMAND"))
 
-            # Audit
-            events = AUDIT.get_recent_events(limit=40)
-            self.audit_table.setRowCount(len(events))
-            for row, ev in enumerate(events):
-                self.audit_table.setItem(row, 0, QTableWidgetItem(ev.get("timestamp", "")))
-                self.audit_table.setItem(row, 1, QTableWidgetItem(ev.get("event_type", "")))
-                self.audit_table.setItem(row, 2, QTableWidgetItem(ev.get("user_id", "ANON")))
-                self.audit_table.setItem(row, 3, QTableWidgetItem(ev.get("role", "GUEST")))
-                self.audit_table.setItem(row, 4, QTableWidgetItem(ev.get("resource", "-")))
-                self.audit_table.setItem(row, 5, QTableWidgetItem(ev.get("status", "")))
-
-        def refresh_all_views(self):
-            self.refresh_files_table()
-            self.refresh_artifacts_table()
-            if self.current_user and self.current_user["role"] == "ADMIN":
-                self.refresh_admin_tables()
-
-
-def main():
-    if not QT_AVAILABLE:
-        print("[!] PySide6/PyQt5 is not installed in this environment.")
-        print("[*] To install: pip install PySide6")
-        return 0
-
+def run_app():
+    ensure_schema()
     app = QApplication(sys.argv)
-    window = SovereignWorkbenchGUI()
-    window.show()
+    apply_app_style(app)
+
+    login = LoginWidget()
+    host = QMainWindow()
+    host.setWindowTitle("Sovereign Industrial AI Workbench")
+    host.resize(860, 600)
+    host.setMinimumSize(760, 520)
+    host.setCentralWidget(login)
+    host.show()
+
+    def authenticated(user):
+        main = SovereignWorkbenchGUI(user)
+        main.show()
+        host.hide()
+        app.main_window = main
+
+    login.authenticated.connect(authenticated)
     return app.exec()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(run_app())

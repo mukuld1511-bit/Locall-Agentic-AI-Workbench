@@ -2,5 +2,5 @@
   "name": "Sovereign Industrial AI Workbench",
   "description": "On-premise sovereign agentic AI workbench using open-weight multimodal LLMs for confidential industrial operations (MRPL SIH26117).",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

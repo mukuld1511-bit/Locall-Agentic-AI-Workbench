@@ -6,3 +6,125 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local runtime / development
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local runtime database
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Generated test artifacts
+data/artifacts/
+
+# Local logs
+*.log
+
+# Local model/runtime files
+models/
+*.gguf
+*.safetensors
+
+# Runtime
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime databases
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Generated artifacts
+data/artifacts/
+
+# Logs
+*.log
+
+# Local models
+models/
+*.gguf
+*.safetensors
+
+# Local backup
+.backup_before_bulk/
+
+# Local development
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime databases
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Runtime artifacts
+data/artifacts/
+
+# Logs
+*.log
+
+# Local models
+models/
+*.gguf
+*.safetensors
+
+# Autonomous run files
+.maxwork_backup/
+.maxwork_source_inventory.txt
+MAX_WORK.log
+MAX_WORK_REPORT.md
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/artifacts/
+
+*.log
+
+models/
+*.gguf
+*.safetensors
+
+.finish_backup/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime state
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/artifacts/
+data/rag_index/
+
+# Logs
+*.log
+
+# Local model binaries
+models/
+*.gguf
+*.safetensors
+*.pt
+*.pth
+
+# Temporary engineering backups
+.phase2_backup/
+
+# Phase logs
+PHASE2_FINISH.log

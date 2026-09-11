@@ -9,11 +9,11 @@ cd "$SCRIPT_DIR"
 
 echo "================================================================================"
 echo "Starting Sovereign Industrial AI Workbench (MRPL SIH26117)"
-echo "Target: NVIDIA RTX 5060 Profile | Zero Cloud Egress"
+echo "Mode: Local Sovereign Runtime | Zero Cloud Egress"
 echo "================================================================================"
 
 # Initialize schema and seed data if database does not exist
-if [ ! -f "data/sovereign_workbench.db" ]; then
+if [ ! -f "data/workbench.db" ]; then
     echo "[*] Initializing local database..."
     python3 scripts/seed_data.py
 fi
