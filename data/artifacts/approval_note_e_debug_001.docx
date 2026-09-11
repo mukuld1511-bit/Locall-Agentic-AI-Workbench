@@ -1,0 +1,41 @@
+================================================================================
+MANGALORE REFINERY AND PETROCHEMICALS LIMITED (MRPL)
+TECHNICAL SERVICES & PLANT INSPECTION DIVISION
+FORMAL ENGINEERING APPROVAL & RECTIFICATION NOTE
+================================================================================
+
+Document ID: MRPL-APRV-E-DEBUG-001-2026-V1
+Date of Generation: 2026-09-08 05:44 UTC
+Prepared By: AI Sovereign Workbench (Requesting Officer: TestEngineer)
+Equipment Tag: E-DEBUG-001
+Regulatory Standard: API 510 10th Edition / OISD-STD-129
+
+--------------------------------------------------------------------------------
+1. EXECUTIVE SUMMARY & INSPECTION FINDINGS
+--------------------------------------------------------------------------------
+- Nominal Shell Thickness: 12.0 mm
+- Measured Ultrasonic Thickness: 8.4 mm
+- Minimum Permissible Thickness (T_min): 6.5 mm
+- Calculated Corrosion Rate: 0.6 mm/year
+- Estimated Remaining Life: 3.17 years
+
+--------------------------------------------------------------------------------
+2. REGULATORY COMPLIANCE EVALUATION
+--------------------------------------------------------------------------------
+The measured wall thickness exceeds minimum retirement thickness by 1.9 mm.
+Remaining service life is calculated at 3.17 years under current operating severities.
+In accordance with MRPL SOP-HEX-042 Clause 4.3, equipment may continue normal operation
+subject to mandatory ultrasonic thickness survey during the scheduled 24-month turnaround.
+
+--------------------------------------------------------------------------------
+3. MANDATORY DIRECTIVES & ACTIONS
+--------------------------------------------------------------------------------
+[X] Continue CDU/VDU operation under normal process control envelope.
+[X] Flag Tag E-1102 on SAP PM Inspection Registry for Turnaround 2028.
+[ ] Parameter Override: NOT REQUIRED.
+
+--------------------------------------------------------------------------------
+APPROVAL SIGN-OFF:
+Superintendent (Inspection)      : APPROVED (Digital Signature)
+Chief General Manager (Technical): APPROVED (Air-Gapped Sovereign AI)
+================================================================================

@@ -1,7 +1,7 @@
 """Model Manager Service for Sovereign Industrial AI Workbench.
 
 Key Capabilities:
-- Strict VRAM Budget Enforcement on RTX 5060 (8192 MB total, 1024 MB OS reserve, 7168 MB active limit).
+- Automatic local-memory budget enforcement based on detected hardware and safety reserve.
 - Model Swapping & Eviction: Evicts idle specialist workers when VRAM budget would be exceeded.
 - Worker Reuse: Consecutive steps utilizing the same model reuse the resident instance (0ms load overhead).
 - Concurrency Control: Mutex locks prevent simultaneous conflicting loads/unloads.

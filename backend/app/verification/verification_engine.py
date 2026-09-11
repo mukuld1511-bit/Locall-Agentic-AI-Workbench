@@ -215,12 +215,28 @@ class VerificationEngine:
         t_min = findings.get("min_required_thickness_mm")
         corrosion_rate = findings.get("corrosion_rate_mm_per_year")
 
-        if thickness and thickness > 0:
+        # Physically impossible measurement: hard failure.
+        # Do this before the safety-threshold check below so negative
+        # values are never misclassified as a human-review condition.
+        if thickness is not None and thickness <= 0:
+            failed.append(
+                f"Measured thickness ({thickness} mm) is physically impossible; "
+                "thickness must be greater than 0 mm."
+            )
+            return VerificationResult(
+                status="FAIL",
+                checks_passed=passed,
+                checks_failed=failed,
+                details={"measured": thickness, "t_min": t_min},
+                can_retry=False,
+            )
+
+        if thickness is not None and thickness > 0:
             passed.append("Measured thickness is physically positive (>0mm)")
         else:
             failed.append("Measured thickness is non-positive or missing")
 
-        if t_min and t_min > 0:
+        if t_min is not None and t_min > 0:
             passed.append("Retirement thickness T_min is valid")
         else:
             failed.append("Retirement thickness T_min invalid")
