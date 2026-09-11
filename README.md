@@ -461,48 +461,103 @@ stateDiagram-v2
 
 ## Tool Gateway Security Gate & Dual-Key Approval Sequence
 
+### How Security Works: The 3 Easy Paths
+
+Every time an engineer or operator asks the workbench to do something, the system checks safety rules. There are only **3 possible outcomes**:
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                      HOW THE SECURITY GATE WORKS IN SIMPLE WORDS (3 PATHS)                             │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  PATH 1: ALLOWED & SAFE (Normal everyday tasks)
+  ──────────────────────────────────────────────
+  Engineer asks to calculate pipe thickness
+      │
+      ▼
+  Security Gate checks: "Does this user have permission? YES."
+      │
+      ▼
+  Safe Box (Sandbox) runs math formula (No internet, 10s time limit)
+      │
+      ▼
+  Verifier checks: "Is the answer positive and non-empty? YES."
+      │
+      ▼
+  Audit records it in SQLite Database  ───>  User sees verified answer with Green Tick ✔
+
+
+  PATH 2: BLOCKED & DENIED (Unauthorized actions)
+  ───────────────────────────────────────────────
+  Operator asks to delete database or run admin command
+      │
+      ▼
+  Security Gate checks: "Does an Operator have permission for this? NO!"
+      │
+      ▼
+  Action is immediately STOPPED (Never reaches the tools)
+      │
+      ▼
+  Audit records BLOCKED attempt  ───>  User sees Red Warning: "Permission Denied" ❌
+
+
+  PATH 3: HIGH RISK → DUAL-KEY APPROVAL (Dangerous plant changes)
+  ───────────────────────────────────────────────────────────────
+  Engineer asks to change safety valve pressure or boiler temperature limit
+      │
+      ▼
+  Security Gate checks: "This is critical! Needs Senior Boss Approval."
+      │
+      ▼
+  System creates Approval Ticket (e.g. Ticket #appr_89a1) and PAUSES the task
+      │
+      ▼
+  Senior Superintendent / Boss opens Admin Panel, reviews request, and clicks [APPROVE]
+      │
+      ▼
+  Task unpauses, runs safely, and saves final report with Senior Sign-off Stamp 🛡️
+```
+
+### Streamlined Sequence Flowchart
+
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Engineer as Plant Engineer (GRADE_2)
-    actor Super as Superintendent (GRADE_3)
-    participant UI as Desktop / Web Interface
-    participant WF as Workflow Engine
-    participant Policy as Central Policy Engine
-    participant GW as Tool Gateway
-    participant Sandbox as Isolated Sandbox
-    participant Verifier as Verification Engine
-    participant Audit as Audit Service (SQLite)
+    actor User as Engineer / User
+    actor Boss as Senior Superintendent
+    participant Security as Security & Policy Gate
+    participant Tools as Safe Tools (Sandbox / Docs)
+    participant DB as SQLite Audit Ledger
 
-    Engineer->>UI: Prompt: "Run thermal efficiency simulation on Furnace F-101"
-    UI->>WF: execute_workflow(task, user_id="engineer_202", role="GRADE_2")
-    WF->>Policy: evaluate(action="sandbox_exec", resource="tool:sandbox_exec")
+    User->>Security: 1. Asks to run task (e.g. "Calculate furnace efficiency")
     
-    alt Unauthorized Action
-        Policy-->>WF: Decision: DENY (Role lacks permission)
-        WF->>Audit: log_event(status="BLOCKED", reason="Permission missing")
-        WF-->>UI: Display Policy Denied Banner
-    else Elevated Risk (Safety Override)
-        Policy-->>WF: Decision: APPROVAL_REQUIRED
-        WF->>Audit: log_event(status="APPROVAL_REQUESTED")
-        WF-->>UI: Workflow Suspended (Ticket: appr_89a12c)
-        Super->>UI: Review ticket appr_89a12c
-        Super->>UI: Approve ticket
-        UI->>Policy: resolve_approval(appr_id, decision="APPROVED")
-        Policy-->>WF: Resume workflow execution
-    else Permitted Action
-        Policy-->>WF: Decision: ALLOW
-        WF->>GW: execute_tool(tool_name="sandbox_exec", arguments={code: "..."})
-        GW->>GW: Validate arguments against JSON Schema
-        GW->>Sandbox: Execute code in isolated subprocess (Timeout: 10s, Mem: 512MB, No Net)
-        Sandbox-->>GW: Result: {stdout: "Efficiency: 84.2%", exit_code: 0}
-        GW->>Verifier: verify_tool_result(result)
-        Verifier-->>GW: Status: PASS
-        GW->>Audit: log_event(event_type="TOOL_EXECUTED", latency_ms=42.1)
-        GW-->>WF: Validated execution payload
-        WF-->>UI: Display verified result with verification badge
+    alt Case A: Unauthorized Action
+        Security-->>User: ❌ BLOCKED: Role does not have permission
+        Security->>DB: Log "BLOCKED_ATTEMPT"
+    else Case B: High-Risk Action (Safety Override)
+        Security-->>User: ⚠️ PAUSED: Created Ticket #appr_89a1 (Needs Boss Approval)
+        User->>Boss: Requests review of Ticket #appr_89a1
+        Boss->>Security: Signs and clicks [APPROVE]
+        Security->>Tools: Runs approved task safely
+        Tools-->>User: ✔ Task finished with Senior Approval Stamp
+        Security->>DB: Log "APPROVED_AND_EXECUTED"
+    else Case C: Normal Permitted Action
+        Security->>Tools: Permission verified (ALLOW) -> Run in safe sandbox
+        Tools-->>User: ✔ Done: Returns verified calculations & files
+        Tools->>DB: Log "SUCCESS" with SHA-256 signature
     end
 ```
+
+### Simple Word Guide to Key Terms:
+
+| Term | What It Means in Simple Words |
+|---|---|
+| **Zero-Trust** | The system does not trust anyone blindly. Every click and question is checked. |
+| **Default-Deny** | Everything is locked by default. You can only use tools that are explicitly turned on for your job role. |
+| **Tool Gateway** | A secure guard wall. The AI can **never** type raw computer commands. It can only ask the gateway to run safe, pre-written tools. |
+| **Sandbox** | A safe, isolated play area for code. If a calculation gets stuck in an infinite loop, the sandbox cuts it off in 10 seconds without crashing your computer. |
+| **Dual-Key Approval** | Just like launching a rocket requires two keys turned at once, dangerous plant changes require both the engineer's request and a senior boss's digital signature. |
+| **Audit Ledger** | A tamper-proof digital diary stored in SQLite that writes down who did what, at what time, and whether it was allowed or blocked. |
 
 ---
 
