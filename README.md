@@ -295,79 +295,136 @@ The codebase is engineered with strict modularity, clean interfaces, and full ty
 
 ## High-Level Architectural Flowchart
 
+### Master System Schematic (High-Visibility View)
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    1. USER INTERACTION LAYER                                    │
+│  ┌──────────────────────────────────────────────┐    ┌──────────────────────────────────────┐   │
+│  │   Native PySide6 Desktop GUI                 │    │   Modern React 19 Web Dashboard      │   │
+│  │   • Asynchronous QThread Decoupling          │    │   • Real-Time Workflow Stepper       │   │
+│  │   • Instant Native Office App Launch (.docx) │    │   • 0-Egress Air-Gap Live Indicators │   │
+│  └──────────────────────┬───────────────────────┘    └──────────────────┬───────────────────┘   │
+└─────────────────────────┼───────────────────────────────────────────────┼───────────────────────┘
+                          │                                               │
+                          ▼                                               ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                               2. ZERO-TRUST SECURITY GATEWAY                                    │
+│  ┌───────────────────────────┐    ┌─────────────────────────┐    ┌───────────────────────────┐  │
+│  │  PBKDF2-HMAC-SHA256 Auth  │───>│  4-Tier RBAC Engine     │───>│  Central Policy Engine    │  │
+│  │  100k Iterations + Salt   │    │  (GRADE_1 through ADMIN)│    │  Strict Default-Deny      │  │
+│  └───────────────────────────┘    └─────────────────────────┘    └─────────────┬─────────────┘  │
+│                                                                                │                │
+│                                           ┌────────────────────────────────────┴──────────────┐ │
+│                                           │ Condition: APPROVAL_REQUIRED (Critical Risk)      │ │
+│                                           ▼                                                   │ │
+│                               ┌─────────────────────────────┐                                 │ │
+│                               │  Dual-Key Approval Gate     │                                 │ │
+│                               │  Superintendent Ticket Sign │                                 │ │
+│                               └─────────────────────────────┘                                 │ │
+└────────────────────────────────────────────────────────────────────────────────┼────────────────┘
+                                                                                 │ Condition: ALLOW
+                                                                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                           3. AGENTIC WORKFLOW ORCHESTRATION LAYER                               │
+│  ┌───────────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │  Workflow Engine & State Machine Orchestrator                                             │  │
+│  │  • Explicit Step Dependency Graphs        • Anti-VRAM Churn Sequential Worker Scheduler   │  │
+│  └─────────────────────────────────────────────┬─────────────────────────────────────────────┘  │
+│                                                │                                                │
+│                      ┌─────────────────────────┴─────────────────────────┐                      │
+│                      ▼                                                   ▼                      │
+│  ┌──────────────────────────────────────┐             ┌──────────────────────────────────────┐  │
+│  │  500M Fast Semantic Organizer        │<────────────│  Dynamic Sector Config Loader        │  │
+│  │  Intent Classification & Sub-Tasks   │             │  (Refinery, Mfg, Utilities, Govt)    │  │
+│  └───────────────────┬──────────────────┘             └──────────────────────────────────────┘  │
+└──────────────────────┼──────────────────────────────────────────────────────────────────────────┘
+                       │
+       ┌───────────────┴─────────────────────────────────────────┐
+       │ Dispatches Reasoning                                    │ Dispatches Tool Actions
+       ▼                                                         ▼
+┌──────────────────────────────────────┐       ┌──────────────────────────────────────────────────┐
+│ 4A. UNIFIED MODEL MANAGER (LOCAL)    │       │ 4B. TOOL GATEWAY (ZERO-SHELL BOUNDARY)           │
+│ ┌──────────────────────────────────┐ │       │ ┌──────────────────────────────────────────────┐ │
+│ │ General: Qwen2.5-3B-Instruct     │ │       │ │ sandbox_exec  : Ephemeral Python Calculation │ │
+│ ├──────────────────────────────────┤ │       │ ├──────────────────────────────────────────────┤ │
+│ │ Coding : StarCoder2-3B           │ │       │ │ ocr           : Local Scanned PDF Parser     │ │
+│ ├──────────────────────────────────┤ │       │ ├──────────────────────────────────────────────┤ │
+│ │ Vision : Qwen2.5-VL-3B + mmproj  │ │       │ │ vision_analyze: P&ID Diagram Recognizer      │ │
+│ ├──────────────────────────────────┤ │       │ ├──────────────────────────────────────────────┤ │
+│ │ Mock   : Dev/CI Fallback Adapter │ │       │ │ doc_generate  : Word/Excel/PPTX Generator    │ │
+│ └──────────────────────────────────┘ │       │ ├──────────────────────────────────────────────┤ │
+│ • 1024 MB OS Display Safety Buffer   │       │ │ rag_search    : Air-Gapped SOP Knowledge Base│ │
+│ • Sequential Memory Management       │       │ └──────────────────────────────────────────────┘ │
+└──────────────────────┬───────────────┘       └─────────────────────────┬────────────────────────┘
+                       │                                                 │
+                       └────────────────────────┬────────────────────────┘
+                                                │ Artifacts & Findings
+                                                ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                       5. DETERMINISTIC VERIFICATION & AUDIT PERSISTENCE                         │
+│  ┌───────────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │  Deterministic Verification Engine                                                        │  │
+│  │  • File Non-Empty Check (>100B)      • Physical Plausibility Rules (Thickness > 0, >= Tmin) │  │
+│  │  • Valid XML Containers (DOCX/XLSX)  • RAG Grounding Verification (>35% Vocabulary Overlap)│  │
+│  └─────────────────────────────────────────────┬─────────────────────────────────────────────┘  │
+│                                                │ Verification PASS
+│                                                ▼
+│  ┌───────────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │  Tamper-Evident SHA-256 Cryptographic Audit Service                                       │  │
+│  │  Hash Chain: EventHash_n = SHA256(EventID + Timestamp + User + Action + EventHash_{n-1})    │  │
+│  └─────────────────────────────────────────────┬─────────────────────────────────────────────┘  │
+│                                                │ Persist Record
+│                                                ▼
+│  ┌───────────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │  Local Air-Gapped SQLite Database (data/workbench.db - 11 Relational Tables)              │  │
+│  └───────────────────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### High-Contrast Component Diagram
+
 ```mermaid
 flowchart TD
-    subgraph UI_Layer["User Interaction Layer"]
-        GUI["Native PySide6 Desktop App<br/>(desktop_gui/main.py)"]
-        WEB["React 19 Modern Web App<br/>(src/App.tsx)"]
-    end
+    %% Styling Classes for Maximum Visual Contrast
+    classDef uiLayer fill:#1E293B,stroke:#38BDF8,stroke-width:2px,color:#F8FAFC
+    classDef securityLayer fill:#312E81,stroke:#818CF8,stroke-width:2px,color:#F8FAFC
+    classDef orchLayer fill:#064E3B,stroke:#34D399,stroke-width:2px,color:#F8FAFC
+    classDef modelLayer fill:#581C87,stroke:#C084FC,stroke-width:2px,color:#F8FAFC
+    classDef toolLayer fill:#164E63,stroke:#22D3EE,stroke-width:2px,color:#F8FAFC
+    classDef verifyLayer fill:#701A75,stroke:#F472B6,stroke-width:2px,color:#F8FAFC
+    classDef dataLayer fill:#1C1917,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC
 
-    subgraph Security_Gate["Zero-Trust Security & Identity Boundary"]
-        AUTH["Auth Service<br/>(PBKDF2-HMAC-SHA256)"]
-        RBAC["RBAC Service<br/>(4 Industrial Role Tiers)"]
-        POLICY["Central Policy Engine<br/>(Default-Deny Decision Matrix)"]
-        APPROVAL["Human Approval Service<br/>(Dual-Key Review Tickets)"]
-    end
+    UI["1. USER INTERACTION<br/><b>Desktop GUI (PySide6)</b> | <b>Web App (React 19)</b>"]:::uiLayer
+    
+    SEC["2. ZERO-TRUST GATE<br/><b>Auth (PBKDF2)</b> → <b>RBAC (4-Tier)</b> → <b>Policy Engine (Default-Deny)</b>"]:::securityLayer
+    
+    APPROVAL{"Dual-Key Review<br/>Required?"}:::securityLayer
+    TICKET["Superintendent Approval Ticket<br/>(Approvals Table)"]:::securityLayer
 
-    subgraph Orchestration_Layer["Agentic Orchestrator & State Machine"]
-        WF["Workflow Engine<br/>(backend/app/workflows/workflow_engine.py)"]
-        ORG["500M Semantic Organizer<br/>(organizer_service.py)"]
-        SECTOR_LOADER["Sector Config Loader<br/>(Refinery, Mfg, Utilities, Govt)"]
-    end
+    ORCH["3. ORCHESTRATION<br/><b>Workflow Engine</b> + <b>500M Semantic Organizer</b> + <b>Sector Configs</b>"]:::orchLayer
 
-    subgraph Model_Layer["Unified Model Manager (VRAM-Aware)"]
-        MGR["Model Registry & Manager<br/>(model_manager/manager.py)"]
-        GENERAL["General Worker<br/>(Qwen2.5-3B-Instruct GGUF)"]
-        CODING["Coding Worker<br/>(StarCoder2-3B GGUF)"]
-        VISION["Vision Worker<br/>(Qwen2.5-VL-3B + mmproj)"]
-        MOCK["Mock Dev Adapter<br/>(Zero-GPU CI/CD Fallback)"]
-    end
+    MODELS["4A. LOCAL MODELS<br/><b>General (Qwen2.5)</b> | <b>Coding (StarCoder2)</b> | <b>Vision (Qwen-VL)</b>"]:::modelLayer
+    TOOLS["4B. TOOL GATEWAY<br/><b>sandbox_exec</b> | <b>ocr</b> | <b>vision_analyze</b> | <b>doc_generate</b> | <b>rag_search</b>"]:::toolLayer
 
-    subgraph Tool_Boundary["Tool Gateway (Zero-Shell Execution Boundary)"]
-        GW["Tool Gateway Service<br/>(tools/gateway.py)"]
-        SANDBOX["Isolated Ephemeral Sandbox<br/>(Python Subprocess, No Network)"]
-        OCR["Local OCR Engine<br/>(Scanned PDF Inspection)"]
-        VENGINE["Vision Analysis Engine<br/>(P&ID Diagram & Valve Tracing)"]
-        SHEETS["Spreadsheet Parser<br/>(CSV / Sensor Telemetry)"]
-        DOCS["Office Document Generator<br/>(.docx, .xlsx, .pptx Generation)"]
-        RAG["Air-Gapped Vector RAG<br/>(Local SOP Knowledge Base)"]
-        FILES["Safe Directory-Bounded File I/O<br/>(Sandboxed to ./data)"]
-    end
+    VERIFY["5. VERIFICATION ENGINE<br/><b>Non-Empty</b> | <b>Physical Bounds (API 510)</b> | <b>RAG Grounding</b> | <b>SHA-256 Digest</b>"]:::verifyLayer
+    
+    AUDIT["6. CRYPTOGRAPHIC AUDIT<br/><b>Tamper-Evident SHA-256 Chaining</b> → <b>SQLite (workbench.db)</b>"]:::dataLayer
 
-    subgraph Persistence_Layer["Local Data & Cryptographic Audit (100% Offline)"]
-        VERIFY["Deterministic Verification Engine<br/>(PASS / FAIL / RETRY / APPROVAL)"]
-        AUDIT["Tamper-Evident Audit Service<br/>(SHA-256 Cryptographic Ledger)"]
-        DB[("Local SQLite Database<br/>data/workbench.db (11 Tables)")]
-    end
-
-    UI_Layer --> AUTH
-    AUTH --> RBAC
-    RBAC --> POLICY
-    POLICY -->|Approval Required| APPROVAL
-    POLICY -->|Permitted| WF
-
-    WF --> ORG
-    SECTOR_LOADER -.-> ORG
-    ORG --> MGR
-    MGR --> GENERAL
-    MGR --> CODING
-    MGR --> VISION
-    MGR --> MOCK
-
-    WF --> GW
-    GW --> SANDBOX
-    GW --> OCR
-    GW --> VENGINE
-    GW --> SHEETS
-    GW --> DOCS
-    GW --> RAG
-    GW --> FILES
-
-    GW --> VERIFY
-    MGR --> VERIFY
+    %% Direct, Uncluttered Hierarchical Flow
+    UI --> SEC
+    SEC --> APPROVAL
+    APPROVAL -- "Critical Risk" --> TICKET
+    TICKET -- "Signed by Admin" --> ORCH
+    APPROVAL -- "Permitted (ALLOW)" --> ORCH
+    
+    ORCH --> MODELS
+    ORCH --> TOOLS
+    
+    MODELS --> VERIFY
+    TOOLS --> VERIFY
+    
     VERIFY --> AUDIT
-    AUDIT --> DB
-    VERIFY --> UI_Layer
 ```
 
 ---
