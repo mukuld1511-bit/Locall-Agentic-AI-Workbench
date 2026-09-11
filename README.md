@@ -15,51 +15,60 @@
 ## Master Table of Contents
 
 1. [Executive Overview & Industrial Mission](#1-executive-overview--industrial-mission)
-2. [What Makes an AI System "Agentic"?](#2-what-makes-an-ai-system-agentic)
+   - [The Problem Statement: SIH26117 (MRPL)](#the-problem-statement-sih26117-mrpl)
+   - [Why Public Cloud AI Is Strictly Prohibited in Critical Infrastructure](#why-public-cloud-ai-is-strictly-prohibited-in-critical-infrastructure)
+   - [The Sovereign Solution: Complete On-Premise Air-Gap](#the-sovereign-solution-complete-on-premise-air-gap)
+2. [Deep Architectural Comparison: Chatbots vs. Agentic Systems](#2-deep-architectural-comparison-chatbots-vs-agentic-systems)
+   - [The Traditional Chatbot Paradigm & Why It Fails Engineering](#the-traditional-chatbot-paradigm--why-it-fails-engineering)
+   - [The Agentic Paradigm: Goal Decomposition, Tools, Observation & Verification](#the-agentic-paradigm-goal-decomposition-tools-observation--verification)
 3. [The Core Philosophy: Understand → Plan → Act → Verify](#3-the-core-philosophy-understand--plan--act--verify)
-4. [Pedagogical & Learning Objectives](#4-pedagogical--learning-objectives)
-   - [Artificial Intelligence & Machine Learning](#artificial-intelligence--machine-learning)
-   - [Software Architecture & Systems Engineering](#software-architecture--systems-engineering)
-   - [Cyber-Security & Governance](#cyber-security--governance)
-   - [Desktop & Modern Web GUI Engineering](#desktop--modern-web-gui-engineering)
-5. [System Architecture & Topology](#5-system-architecture--topology)
+   - [Stage-by-Stage Operational Philosophy](#stage-by-stage-operational-philosophy)
+   - [The Mathematical Representation of Multi-Factor Intent](#the-mathematical-representation-of-multi-factor-intent)
+4. [Pedagogical & Engineering Learning Objectives](#4-pedagogical--engineering-learning-objectives)
+   - [Artificial Intelligence & Machine Learning Track](#artificial-intelligence--machine-learning-track)
+   - [Software Architecture & Systems Engineering Track](#software-architecture--systems-engineering-track)
+   - [Cyber-Security & Regulatory Governance Track](#cyber-security--regulatory-governance-track)
+   - [Desktop & Modern Web GUI Engineering Track](#desktop--modern-web-gui-engineering-track)
+5. [End-to-End System Architecture & Visual Topology](#5-end-to-end-system-architecture--visual-topology)
    - [High-Level Architectural Flowchart](#high-level-architectural-flowchart)
-   - [Detailed 10-Stage Request Lifecycle State Machine](#detailed-10-stage-request-lifecycle-state-machine)
+   - [The 10-Stage Request Lifecycle State Machine](#the-10-stage-request-lifecycle-state-machine)
    - [Tool Gateway Security Gate & Dual-Key Approval Sequence](#tool-gateway-security-gate--dual-key-approval-sequence)
-6. [Core Subsystems & Architectural Deep Dive](#6-core-subsystems--architectural-deep-dive)
-   - [Workflow Engine & State Machine Orchestrator](#61-workflow-engine--state-machine-orchestrator)
-   - [Semantic Intent Routing & Classification (Why Keywords Fail)](#62-semantic-intent-routing--classification-why-keywords-fail)
-   - [Multi-Model Manager, Registry & Unified Adapters](#63-multi-model-manager-registry--unified-adapters)
-   - [Multimodal Vision & P&ID Analysis Engine](#64-multimodal-vision--pid-analysis-engine)
-   - [Tool Gateway & Zero-Shell Security Boundary](#65-tool-gateway--zero-shell-security-boundary)
-   - [Isolated Ephemeral Python Sandbox](#66-isolated-ephemeral-python-sandbox)
-   - [Deterministic Verification Engine](#67-deterministic-verification-engine)
-   - [Zero-Trust Policy Engine & 4-Tier RBAC](#68-zero-trust-policy-engine--4-tier-rbac)
-   - [Human-in-the-Loop (HITL) Dual-Key Approval Gate](#69-human-in-the-loop-hitl-dual-key-approval-gate)
-   - [Tamper-Evident SHA-256 Audit Logging](#610-tamper-evident-sha-256-audit-logging)
-   - [Air-Gapped Vector Retrieval-Augmented Generation (RAG)](#611-air-gapped-vector-retrieval-augmented-generation-rag)
+6. [Core Subsystems: Comprehensive Technical Deep Dive](#6-core-subsystems-comprehensive-technical-deep-dive)
+   - [6.1 Workflow Engine & State Machine Orchestrator](#61-workflow-engine--state-machine-orchestrator)
+   - [6.2 Semantic Intent Routing & Parameter Extraction](#62-semantic-intent-routing--parameter-extraction)
+   - [6.3 Multi-Model Manager, Registry & Unified Adapters](#63-multi-model-manager-registry--unified-adapters)
+   - [6.4 Multimodal Vision & P&ID Analysis Engine](#64-multimodal-vision--pid-analysis-engine)
+   - [6.5 Tool Gateway & Zero-Shell Security Boundary](#65-tool-gateway--zero-shell-security-boundary)
+   - [6.6 Isolated Ephemeral Python Sandbox Runner](#66-isolated-ephemeral-python-sandbox-runner)
+   - [6.7 Industrial Deliverable Generator (.docx, .xlsx, .pptx)](#67-industrial-deliverable-generator-docx-xlsx-pptx)
+   - [6.8 Deterministic Verification Engine & Physical Plausibility Rules](#68-deterministic-verification-engine--physical-plausibility-rules)
+   - [6.9 Zero-Trust Policy Engine & 4-Tier Industrial RBAC](#69-zero-trust-policy-engine--4-tier-industrial-rbac)
+   - [6.10 Human-in-the-Loop (HITL) Dual-Key Approval System](#610-human-in-the-loop-hitl-dual-key-approval-system)
+   - [6.11 Tamper-Evident SHA-256 Cryptographic Audit Ledger](#611-tamper-evident-sha-256-cryptographic-audit-ledger)
+   - [6.12 Air-Gapped Vector Retrieval-Augmented Generation (RAG)](#612-air-gapped-vector-retrieval-augmented-generation-rag)
+   - [6.13 Prompt Injection Sanitizer & Adversarial Defenses](#613-prompt-injection-sanitizer--adversarial-defenses)
 7. [Multi-Sector Configuration System](#7-multi-sector-configuration-system)
-   - [Dynamic Sector Loader Architecture](#dynamic-sector-loader-architecture)
-   - [Refinery Sector Profile (MRPL Default)](#refinery-sector-profile-mrpl-default)
-   - [Manufacturing Sector Profile](#manufacturing-sector-profile)
-   - [Utilities Sector Profile](#utilities-sector-profile)
-   - [Government Sector Profile](#government-sector-profile)
-8. [Database Schema & Data Persistence](#8-database-schema--data-persistence)
-   - [Entity Relationship Overview](#entity-relationship-overview)
-   - [Complete Schema Definition (11 Tables)](#complete-schema-definition-11-tables)
+   - [Dynamic Sector Discovery Architecture](#dynamic-sector-discovery-architecture)
+   - [Refinery Sector Profile (MRPL Petroleum Refining)](#refinery-sector-profile-mrpl-petroleum-refining)
+   - [Manufacturing Sector Profile (Discrete & Process Plants)](#manufacturing-sector-profile-discrete--process-plants)
+   - [Utilities Sector Profile (Power Grid & Municipal Water)](#utilities-sector-profile-power-grid--municipal-water)
+   - [Government Sector Profile (Sovereign Public Administration & Defense)](#government-sector-profile-sovereign-public-administration--defense)
+8. [Database Schema & Data Persistence (11 Relational Tables)](#8-database-schema--data-persistence-11-relational-tables)
+   - [Entity-Relationship Diagram](#entity-relationship-diagram)
+   - [Detailed Table Definitions & Field Constraints](#detailed-table-definitions--field-constraints)
 9. [User Interfaces: Dual Frontend Architecture](#9-user-interfaces-dual-frontend-architecture)
-   - [Native PySide6 Desktop GUI (desktop_gui/)](#native-pyside6-desktop-gui-desktop_gui)
+   - [Native PySide6 Desktop GUI (desktop_gui/main.py)](#native-pyside6-desktop-gui-desktop_guimainpy)
    - [Modern React 19 Web Dashboard (src/App.tsx)](#modern-react-19-web-dashboard-srcapptsx)
-10. [Hardware Awareness & VRAM Budget Management](#10-hardware-awareness--vram-budget-management)
-    - [The 8GB VRAM Challenge & The Anti-Churn Scheduler](#the-8gb-vram-challenge--the-anti-churn-scheduler)
-    - [Hardware Detection & Safety Reserves](#hardware-detection--safety-reserves)
+10. [Hardware Awareness & Dynamic VRAM Allocation](#10-hardware-awareness--dynamic-vram-allocation)
+    - [The 8GB VRAM Constraint & The Anti-Churn Scheduler](#the-8gb-vram-constraint--the-anti-churn-scheduler)
+    - [Dynamic Memory Budgeting & OS Reserve Margin](#dynamic-memory-budgeting--os-reserve-margin)
 11. [Repository Directory Tour](#11-repository-directory-tour)
-12. [Installation & Quick Start Guide](#12-installation--quick-start-guide)
+12. [Installation & Setup Step-by-Step](#12-installation--setup-step-by-step)
     - [Option A: Native Desktop GUI (Windows & Linux)](#option-a-native-desktop-gui-windows--linux)
     - [Option B: Modern React 19 Web Application](#option-b-modern-react-19-web-application)
     - [Option C: Air-Gapped Docker Microservice Stack](#option-c-air-gapped-docker-microservice-stack)
     - [Option D: Zero-GPU Mock Development Mode](#option-d-zero-gpu-mock-development-mode)
-13. [Pre-Seeded Credentials & Security Roles](#13-pre-seeded-credentials--security-roles)
+13. [Pre-Seeded Credentials & Security Roles Table](#13-pre-seeded-credentials--security-roles-table)
 14. [Configuration & Environment Variables (.env)](#14-configuration--environment-variables-env)
 15. [Local Model Weights Acquisition & Setup](#15-local-model-weights-acquisition--setup)
 16. [Comprehensive Walkthrough of Example Workflows](#16-comprehensive-walkthrough-of-example-workflows)
@@ -70,9 +79,9 @@
     - [Workflow 5: Generating Official Office Deliverables (.docx / .xlsx / .pptx)](#workflow-5-generating-official-office-deliverables-docx--xlsx--pptx)
     - [Workflow 6: Dual-Key Human Approval on High-Risk Action](#workflow-6-dual-key-human-approval-on-high-risk-action)
 17. [Automated Testing & Quality Assurance](#17-automated-testing--quality-assurance)
-    - [Running the Test Suite](#running-the-test-suite)
-    - [Detailed Breakdown of the 9 Test Suites](#detailed-breakdown-of-the-9-test-suites)
-18. [Systematic 9-Step Debugging Methodology](#18-systematic-9-step-debugging-methodology)
+    - [Running the Master Test Suite](#running-the-master-test-suite)
+    - [Deep Dive into the 9 Automated Test Suites](#deep-dive-into-the-9-automated-test-suites)
+18. [Systematic 9-Step Bottom-Up Debugging Methodology](#18-systematic-9-step-bottom-up-debugging-methodology)
 19. [Extensibility & Developer Guide](#19-extensibility--developer-guide)
     - [How to Add a New Tool to the Gateway](#how-to-add-a-new-tool-to-the-gateway)
     - [How to Add a New Industrial Sector Profile](#how-to-add-a-new-industrial-sector-profile)
@@ -81,8 +90,8 @@
     - [Beginner Level (Tasks 1–3)](#beginner-level-tasks-13)
     - [Intermediate Level (Tasks 4–6)](#intermediate-level-tasks-46)
     - [Advanced Level (Tasks 7–10)](#advanced-level-tasks-710)
-21. [Core Design Principles](#21-core-design-principles)
-22. [Security, Threat Model & Regulatory Compliance](#22-security-threat-model--regulatory-compliance)
+21. [Foundational Design Principles](#21-foundational-design-principles)
+22. [Threat Modeling, Cybersecurity & Regulatory Compliance](#22-threat-modeling-cybersecurity--regulatory-compliance)
 23. [Troubleshooting & Frequently Asked Questions (FAQ)](#23-troubleshooting--frequently-asked-questions-faq)
 24. [Roadmap & Future Enhancements](#24-roadmap--future-enhancements)
 25. [Final Mental Model](#25-final-mental-model)
@@ -91,156 +100,198 @@
 
 # 1. Executive Overview & Industrial Mission
 
-The **Sovereign Industrial AI Workbench** is a specialized, local-first, air-gapped agentic AI workstation engineered specifically for mission-critical engineering workflows and critical national infrastructure. The workbench was originally architected for **Mangalore Refinery and Petrochemicals Limited (MRPL)** under Problem Statement **SIH26117**, but features an extensible multi-sector configuration engine that supports refineries, discrete manufacturing plants, power/water utilities, and sovereign government bodies.
+The **Sovereign Industrial AI Workbench** is a specialized, local-first, air-gapped agentic AI workstation engineered specifically for mission-critical engineering workflows and critical national infrastructure.
 
-### The Problem: Why Cloud AI Cannot Be Used in Critical Plants
-In major process plants, such as crude distillation units, thermal power stations, or defense facilities, operations depend on sensitive internal intellectual property:
-- **Piping & Instrumentation Diagrams (P&IDs)** detailing process flow, pressure ratings, and safety relief valve settings,
-- **Ultrasonic thickness measurement sheets** recording asset wall thinning and corrosion rates,
-- **Real-time SCADA and DCS sensor telemetry** showing operating temperatures, pressures, and flow dynamics, and
-- **Proprietary Standard Operating Procedures (SOPs)** and emergency shutdown protocols.
+### The Problem Statement: SIH26117 (MRPL)
+In heavy industrial plants, such as petroleum refineries (e.g. Mangalore Refinery and Petrochemicals Limited — MRPL), offshore oil platforms, thermal and nuclear power stations, and chemical processing facilities, engineers handle data that is classified as **Critical National Infrastructure (CNI)**.
 
-Under national critical infrastructure security regulations (e.g., OISD in India, NERC CIP in North America, NIS 2 in Europe), **transmitting this data to public multi-tenant cloud APIs (such as OpenAI, Microsoft Azure, Google Gemini, or Anthropic) is strictly prohibited.** Doing so risks catastrophic intellectual property loss, regulatory shutdowns, and vulnerability to external exfiltration or supply-chain compromise.
+A single petroleum refinery processes hundreds of thousands of barrels of crude oil daily across complex thermodynamic units:
+- **Crude Distillation Units (CDU) & Vacuum Distillation Units (VDU)** operating at temperatures up to 400°C and severe atmospheric/vacuum pressures.
+- **Hydrocracker Units (HCU)** operating under extreme hydrogen partial pressures exceeding 150 bar.
+- **Continuous Catalytic Reforming (CCR)** and Fluid Catalytic Cracking (FCC) units with flammable hydrocarbon mixtures.
 
-### The Solution: The Sovereign Air-Gapped Workbench
-The Sovereign Industrial AI Workbench brings state-of-the-art multimodal agentic AI **entirely onto on-premise local hardware**. It runs inside the facility's air-gapped boundary with:
-- **Zero External Network Egress**: Sockets to public IP addresses are physically or logically blocked at the network interface layer.
-- **Hardware-Aware Local Inference**: Runs high-performance quantized open-weights models (GGUF via `llama.cpp` and Safetensors via PyTorch) on standard workstation GPUs (such as NVIDIA RTX 3060, 4060, or 5060 with 8GB VRAM).
-- **Strict Execution Boundaries**: The model never has access to raw OS shells. Every action is strictly arbitrated by an authorization gateway.
-- **Deterministic Quality Control**: Outputs are inspected by automated verifiers and signed with SHA-256 cryptographic hashes before being handed to plant personnel.
+Ensuring mechanical integrity across thousands of kilometers of piping, heat exchangers, pressure vessels, and distillation columns requires constant monitoring, non-destructive testing (NDT), ultrasonic thickness measurement, and compliance with statutory engineering codes (API 510, API 570, OISD-105, OISD-129).
+
+### Why Public Cloud AI Is Strictly Prohibited in Critical Infrastructure
+Standard commercial generative AI platforms (such as OpenAI ChatGPT, Microsoft Copilot, Google Gemini, or Anthropic Claude) rely on remote, multi-tenant cloud data centers. In a sovereign industrial setting, using cloud AI is strictly forbidden due to four primary attack vectors and regulatory prohibitions:
+
+1. **National Critical Infrastructure Regulations**: Standards such as the **Oil Industry Safety Directorate (OISD)** in India, **NERC CIP** in North America, and **NIS 2** in the European Union mandate that process telemetry and safety documentation must remain on isolated, segregated industrial networks (Purdue Model Level 3/4).
+2. **Proprietary Process IP & Metallurgy**: Submitting ultrasonic wall-thinning logs, crude assay compositions, or heat exchanger failure reports to third-party servers constitutes an unacceptable loss of proprietary corporate intellectual property.
+3. **Data Exfiltration Vulnerabilities**: Cloud APIs require persistent internet egress sockets (`0.0.0.0/0`). In an air-gapped facility, egress sockets introduce a catastrophic lateral attack vector for malicious actors seeking to disrupt physical plant control systems (DCS / SCADA).
+4. **Hallucination & Lack of Verifiable Calculation**: A cloud LLM will generate hallucinated text with confident authority. In structural engineering, an incorrect corrosion calculation can lead to vessel rupture, explosive hydrocarbon release, loss of human life, and catastrophic environmental disaster.
+
+### The Sovereign Solution: Complete On-Premise Air-Gap
+The Sovereign Industrial AI Workbench provides a complete, locally self-contained solution:
+- **Zero Cloud Sockets**: The entire software stack operates without external network interfaces. All sockets bind strictly to `127.0.0.1` or internal Docker bridge networks with egress physically disabled.
+- **Consumer/Workstation GPU Execution**: Runs high-performance open-weights quantized models (`GGUF` format via `llama.cpp` and PyTorch `safetensors`) on standard workstation hardware (such as the NVIDIA RTX 3060, 4060, or 5060 with 8GB VRAM).
+- **Guarded Execution Boundary**: The LLM is never granted arbitrary shell execution access. Every action is mediated by a schema-validated Tool Gateway.
+- **Deterministic Math & Code Execution**: Formulas are not hallucinated by language models; they are executed inside an ephemeral, resource-capped Python sandbox.
+- **Deterministic Verification**: Output artifacts are inspected by automated verifiers and signed with SHA-256 cryptographic digests before being handed to plant personnel.
 
 ---
 
-# 2. What Makes an AI System "Agentic"?
+# 2. Deep Architectural Comparison: Chatbots vs. Agentic Systems
 
-There is a fundamental difference between a **conversational chatbot** and an **agentic AI workbench**.
+To understand why this workbench was constructed, one must examine the profound architectural difference between a conversational chatbot and an autonomous agentic workbench.
 
-### The Traditional Chatbot
-A standard chatbot is an open-loop text predictor:
-
-```
-[User Input] ────> [Prompt Construction] ────> [LLM Generation] ────> [Text Output]
-```
-
-When an engineer asks a standard chatbot:
-> *"Calculate the corrosion rate for Heat Exchanger E-1102 from the attached ultrasonic report and generate an approval note."*
-
-The standard chatbot can only guess formulas and hallucinate plausible-sounding numbers. It has no access to verified calculation runtimes, cannot inspect local scanned files, cannot produce formatted binary files (`.docx`), and cannot guarantee that its calculations follow ASME or API 510 codes.
-
-### The Agentic Architecture
-An agentic system exhibits **goal-oriented behavior, tool utilization, environment observation, and self-verification**:
+### The Traditional Chatbot Paradigm & Why It Fails Engineering
+A standard chatbot is an open-loop text generator:
 
 ```
-[User Goal] 
-     │
-     ▼
-[1. Semantic Intent Classification & Decomposition]
-     │
-     ▼
-[2. Zero-Trust Policy & RBAC Evaluation] ──(Denied)──> [Audit Log & Block]
-     │ (Allowed)
-     ▼
-[3. Step-by-Step Action Planning]
-     │
-     ├── Step A: Invoke OCR Tool to parse ultrasonic inspection PDF
-     │            └─ Observe: Extracted shell thickness = 7.2 mm
-     │
-     ├── Step B: Invoke Sandbox Tool to calculate corrosion rate in isolated Python
-     │            └─ Observe: Corrosion rate = 0.28 mm/year, Remaining Life = 7.8 years
-     │
-     ├── Step C: Invoke Document Generator Tool to assemble formal .docx report
-     │            └─ Observe: File written to data/artifacts/approval_note_E1102.docx
-     │
-     ▼
-[4. Deterministic Post-Generation Verification]
-     │  - Check: Does file exist on disk?
-     │  - Check: Is file non-zero in size?
-     │  - Check: Does the SHA-256 match the recorded audit signature?
-     │
-     ▼
-[5. Tamper-Evident Audit Logging] ──> [Immutable Record in SQLite]
-     │
-     ▼
-[6. Delivered Verified Deliverable to Operator]
+[Operator Prompt] ──────> [Prompt String] ──────> [LLM Tokenizer & Model] ──────> [Predicted Markdown Text]
 ```
 
-An agent does not merely *predict text*. It **understands**, **plans**, **acts through guarded tools**, **observes results**, **verifies outputs**, and **records an accountable audit trail**.
+Consider what occurs when a mechanical reliability engineer asks a standard chatbot:
+> *"Review the attached ultrasonic inspection report for Heat Exchanger E-1102, calculate the corrosion rate and remaining life under API 510, and generate the formal engineering approval note."*
+
+A standard chatbot responds by outputting text that looks like an approval note. However:
+- It **cannot inspect local scanned documents**; it guesses values or hallucinates numbers.
+- It **cannot reliably perform division**: If current thickness is $8.4\text{ mm}$, retirement limit $t_{\text{min}}$ is $6.5\text{ mm}$, and the corrosion rate is $0.6\text{ mm/year}$, an LLM token predictor will frequently output mathematically incorrect remaining life estimates ($3.17\text{ years}$ vs. $2.9\text{ years}$ vs. $4.0\text{ years}$).
+- It **cannot produce actual binary deliverables**: It cannot write a formatted Microsoft Word document (`.docx`) containing corporate headers, structured tables, and digital sign-off blocks.
+- It **cannot verify its work**: It has no feedback loop to confirm whether its conclusions are physically plausible or comply with statutory codes.
+
+### The Agentic Paradigm: Goal Decomposition, Tools, Observation & Verification
+In contrast, an **agentic system** treats language models as components within an orchestrated software engineering framework:
+
+```
+                       [Operator Goal & Attached Documents]
+                                         │
+                                         ▼
+                 [Phase 1: Multi-Factor Semantic Intent Routing]
+                 Decomposes request into a directed dependency graph:
+                 1. Extract data from PDF  ─>  2. Run Sandbox Math  ─>  3. Generate .docx
+                                         │
+                                         ▼
+                 [Phase 2: Zero-Trust Policy & Role Evaluation]
+                 Checks user identity, active sector, and tool permissions.
+                 Decision: ALLOW (or APPROVAL_REQUIRED if high risk).
+                                         │
+                                         ▼
+                 [Phase 3: Specialized Worker Execution via Tool Gateway]
+                 ┌────────────────────────────────────────────────────────┐
+                 │ Tool 1: tools/ocr                                      │
+                 │ Parses scanned inspection PDF.                         │
+                 │ Observation: Shell measured = 8.4mm, baseline = 12.0mm.│
+                 ├────────────────────────────────────────────────────────┤
+                 │ Tool 2: tools/sandbox_exec                             │
+                 │ Runs deterministic Python script in isolated sandbox.  │
+                 │ Formula: Remaining_Life = (8.4 - 6.5) / 0.6            │
+                 │ Observation: Remaining Life = 3.1667 years.            │
+                 ├────────────────────────────────────────────────────────┤
+                 │ Tool 3: tools/doc_generate                             │
+                 │ Produces formal compliance artifact.                   │
+                 │ Observation: Written data/artifacts/approval_note.docx │
+                 └────────────────────────────────────────────────────────┘
+                                         │
+                                         ▼
+                 [Phase 4: Deterministic Post-Generation Verification]
+                 Checks: File existence, non-empty size, valid DOCX XML container,
+                 physical plausibility (thickness > 0, thickness >= t_min),
+                 and computes SHA-256 cryptographic digest.
+                                         │
+                                         ▼
+                 [Phase 5: Immutable Cryptographic Audit Ledger]
+                 Commits SHA-256 hash-chained event record into SQLite database.
+                                         │
+                                         ▼
+                 [Phase 6: Verified Deliverable Presented to Engineer]
+```
+
+An agentic workbench does not merely generate text: **it perceives, plans, acts through tools, observes outcomes, deterministically verifies artifacts, and creates an immutable audit trail.**
 
 ---
 
 # 3. The Core Philosophy: Understand → Plan → Act → Verify
 
-Every transaction in the Sovereign Workbench adheres to a four-phase execution philosophy:
+Every transaction in the Sovereign Workbench adheres to an inviolable four-phase execution philosophy:
 
 ```
                     ┌────────────────────────────────────────┐
                     │               UNDERSTAND               │
-                    │  Intent Resolver + Context Window      │
-                    │  Multimodal Vision + Attachment State  │
+                    │  • Multi-Factor Intent Classification  │
+                    │  • Multimodal Vision Token Projection  │
+                    │  • Context History & Attachment State  │
+                    │  • Sector Profile & User RBAC Grade    │
                     └───────────────────┬────────────────────┘
                                         │
                                         ▼
                     ┌────────────────────────────────────────┐
                     │                  PLAN                  │
-                    │  500M Semantic Organizer               │
-                    │  Dependency Graph Generation           │
-                    │  Worker Scheduling (Anti-VRAM Churn)   │
+                    │  • 500M Semantic Organizer             │
+                    │  • Step Dependency Graph Formulation   │
+                    │  • Worker Scheduling (Anti-VRAM Churn) │
                     └───────────────────┬────────────────────┘
                                         │
                                         ▼
                     ┌────────────────────────────────────────┐
                     │                  ACT                   │
-                    │  Zero-Trust Policy Gate & RBAC         │
-                    │  Tool Gateway + Ephemeral Sandbox      │
-                    │  Specialized Model Inference           │
+                    │  • Central Default-Deny Policy Gate    │
+                    │  • Schema-Validated Tool Gateway       │
+                    │  • Ephemeral Subprocess Sandbox        │
+                    │  • Specialized Local Model Inference   │
                     └───────────────────┬────────────────────┘
                                         │
                                         ▼
                     ┌────────────────────────────────────────┐
                     │                 VERIFY                 │
-                    │  Deterministic Output Validation       │
-                    │  Cryptographic SHA-256 Checksum        │
-                    │  Immutable Audit Ledger Persistence    │
+                    │  • Non-Zero Byte & Existence Checks    │
+                    │  • Schema & Binary Container Validity  │
+                    │  • Physical Plausibility Rules         │
+                    │  • SHA-256 Cryptographic Audit Ledger  │
                     └────────────────────────────────────────┘
 ```
 
-1. **Understand**: The system evaluates not just the words in the prompt, but the user's role, the active sector profile, attached files (images, PDFs, spreadsheets), and previous conversation history.
-2. **Plan**: The 500M parameter Organizer model deconstructs complex requests into atomic steps with explicit input/output dependencies.
-3. **Act**: Execution is passed through the Policy Engine. Permitted actions call tools via the Tool Gateway or invoke specialized local worker models.
-4. **Verify**: Before displaying results, the Verification Engine asserts file existence, non-empty payload, schema conformance, and computes SHA-256 digests.
+### Stage-by-Stage Operational Philosophy
+1. **Understand**: The system evaluates not just the prompt text, but the user's role (`GRADE_1` through `ADMIN`), the active industrial sector profile (`refinery`, `manufacturing`, `utilities`, `government`), attached files (images, PDFs, spreadsheets), and previous conversation turns.
+2. **Plan**: The 500M parameter Semantic Organizer deconstructs complex requests into atomic steps with explicit input/output dependencies.
+3. **Act**: Execution is passed through the Policy Engine. Permitted actions invoke canonical tools via the Tool Gateway or execute specialized local worker models.
+4. **Verify**: Before displaying results, the Verification Engine asserts file existence, non-empty payload, schema conformance, and physical plausibility, computing SHA-256 digests.
+
+### The Mathematical Representation of Multi-Factor Intent
+In the Sovereign Industrial AI Workbench, intent is not treated as a keyword search. It is formalized as a multi-dimensional function:
+
+$$\text{Intent} = f\Big(\mathbf{M}_{\text{text}}, \mathbf{A}_{\text{type}}, \mathbf{C}_{\text{history}}, \mathbf{S}_{\text{sector}}, \mathbf{R}_{\text{role}}, \mathbf{W}_{\text{state}}\Big)$$
+
+Where:
+- $\mathbf{M}_{\text{text}}$ is the natural language message token sequence.
+- $\mathbf{A}_{\text{type}} \in \{\emptyset, \text{IMAGE}, \text{PDF}, \text{SPREADSHEET}, \text{CODE}\}$ represents attachment modalities.
+- $\mathbf{C}_{\text{history}}$ is the conversational context window.
+- $\mathbf{S}_{\text{sector}} \in \{\text{REFINERY}, \text{MANUFACTURING}, \text{UTILITIES}, \text{GOVERNMENT}\}$ provides industry-specific standards and equipment taxonomies.
+- $\mathbf{R}_{\text{role}} \in \{\text{GRADE\_1}, \text{GRADE\_2}, \text{GRADE\_3}, \text{ADMIN}\}$ enforces authorization constraints.
+- $\mathbf{W}_{\text{state}}$ represents the active workspace directory and active document handles.
 
 ---
 
-# 4. Pedagogical & Learning Objectives
+# 4. Pedagogical & Engineering Learning Objectives
 
 The codebase is engineered with strict modularity, clean interfaces, and full typing, making it an exceptional platform for university students, industrial software engineers, and AI practitioners to master modern engineering disciplines:
 
-## Artificial Intelligence & Machine Learning
-- **Quantized GGUF Inference**: Master how 4-bit and 5-bit quantization (`Q4_K_M`, `Q5_K_M`) allows large models to fit inside consumer GPU memory without catastrophic accuracy loss.
+## Artificial Intelligence & Machine Learning Track
+- **Quantized GGUF Inference**: Master how 4-bit and 5-bit quantization (`Q4_K_M`, `Q5_K_M`) allows large language models to fit inside consumer GPU memory without catastrophic accuracy loss.
 - **Multimodal Architectures**: Understand how vision encoders (e.g., SigLIP or CLIP) project image tokens into an LLM's embedding space via multimodal projector matrices (`mmproj`).
 - **Semantic Intent Routing**: Study how small, lightweight models (500M parameters) can act as ultra-fast, cost-effective intent classifiers and workflow routers rather than wasting massive models on simple routing.
 - **Retrieval-Augmented Generation (RAG)**: Learn chunking, vector cosine similarity, context window stuffing, and grounding verification.
 
-## Software Architecture & Systems Engineering
+## Software Architecture & Systems Engineering Track
 - **The Adapter Pattern**: Examine how `BaseModelAdapter` abstracts away the underlying inference engine (`llama.cpp`, PyTorch `transformers`, or `MockDevAdapter`) behind a uniform dataclass contract (`WorkerResponse`).
 - **State Machine Orchestration**: Study how `WorkflowEngine` implements robust state transitions (`PENDING` → `PLANNING` → `EXECUTING` → `VERIFYING` → `COMPLETED`) with graceful failure recovery.
 - **Process Management & Subprocess Isolation**: Learn how the Python sandbox uses pipe redirection, memory limits (`RLIMIT_AS`), and timeouts to safely execute untrusted generated code.
 - **Hardware Telemetry Integration**: Inspect real-time VRAM and RAM query routines that adapt system behavior based on available physical resources.
 
-## Cyber-Security & Governance
+## Cyber-Security & Regulatory Governance Track
 - **Zero-Trust & Default-Deny Policies**: Understand why security-first platforms deny all operations by default and require explicit white-listing.
 - **Role-Based Access Control (RBAC)**: Explore 4-tier industrial permission matrices (`GRADE_1` through `ADMIN`).
 - **Dual-Key Human-in-the-Loop Approvals**: Implement safety-critical workflows where destructive or high-risk actions require cryptographic approval tokens from superior officers.
 - **Adversarial Input Sanitization**: Study defense-in-depth filters that strip prompt injection attacks, jailbreak attempts, and system prompt exfiltration probes.
 - **Tamper-Evident Audit Logging**: Master cryptographic hash chaining where each audit event includes the SHA-256 digest of the previous record.
 
-## Desktop & Modern Web GUI Engineering
+## Desktop & Modern Web GUI Engineering Track
 - **Asynchronous Desktop GUI**: Study how `QThread` and Qt signals decouple background model inference from the PySide6 UI event loop, preventing UI freezes.
 - **Modern Web Dashboard**: Explore a clean, reactive React 19 web application built with TypeScript, Tailwind CSS, Lucide icons, and Motion.
 
 ---
 
-# 5. System Architecture & Topology
+# 5. End-to-End System Architecture & Visual Topology
 
 ## High-Level Architectural Flowchart
 
@@ -251,14 +302,14 @@ flowchart TD
         WEB["React 19 Modern Web App<br/>(src/App.tsx)"]
     end
 
-    subgraph Security_Gate["Zero-Trust Security & Identity"]
+    subgraph Security_Gate["Zero-Trust Security & Identity Boundary"]
         AUTH["Auth Service<br/>(PBKDF2-HMAC-SHA256)"]
         RBAC["RBAC Service<br/>(4 Industrial Role Tiers)"]
         POLICY["Central Policy Engine<br/>(Default-Deny Decision Matrix)"]
         APPROVAL["Human Approval Service<br/>(Dual-Key Review Tickets)"]
     end
 
-    subgraph Orchestration_Layer["Agentic Orchestrator"]
+    subgraph Orchestration_Layer["Agentic Orchestrator & State Machine"]
         WF["Workflow Engine<br/>(backend/app/workflows/workflow_engine.py)"]
         ORG["500M Semantic Organizer<br/>(organizer_service.py)"]
         SECTOR_LOADER["Sector Config Loader<br/>(Refinery, Mfg, Utilities, Govt)"]
@@ -283,7 +334,7 @@ flowchart TD
         FILES["Safe Directory-Bounded File I/O<br/>(Sandboxed to ./data)"]
     end
 
-    subgraph Persistence_Layer["Local Data & Audit (100% Offline)"]
+    subgraph Persistence_Layer["Local Data & Cryptographic Audit (100% Offline)"]
         VERIFY["Deterministic Verification Engine<br/>(PASS / FAIL / RETRY / APPROVAL)"]
         AUDIT["Tamper-Evident Audit Service<br/>(SHA-256 Cryptographic Ledger)"]
         DB[("Local SQLite Database<br/>data/workbench.db (11 Tables)")]
@@ -321,7 +372,7 @@ flowchart TD
 
 ---
 
-## Detailed 10-Stage Request Lifecycle State Machine
+## The 10-Stage Request Lifecycle State Machine
 
 ```mermaid
 stateDiagram-v2
@@ -398,7 +449,7 @@ sequenceDiagram
 
 ---
 
-# 6. Core Subsystems & Architectural Deep Dive
+# 6. Core Subsystems: Comprehensive Technical Deep Dive
 
 ## 6.1 Workflow Engine & State Machine Orchestrator
 Located at `backend/app/workflows/workflow_engine.py`.
@@ -434,7 +485,7 @@ class WorkflowExecutionState:
 
 ---
 
-## 6.2 Semantic Intent Routing & Classification (Why Keywords Fail)
+## 6.2 Semantic Intent Routing & Parameter Extraction
 Located at `backend/app/organizer/organizer_service.py`.
 
 A naive AI application relies on simple keyword searching:
@@ -450,11 +501,7 @@ This fails catastrophically in production:
 - `"what is this?"` + `inspection_report.pdf` &rarr; Document analysis &rarr; `DOCUMENT / RAG` pipeline.
 - `"what is this?"` + `telemetry_data.xlsx` &rarr; Tabular data analysis &rarr; `SPREADSHEET` tool.
 
-### Mathematical Formulation of Intent
-In the Sovereign Industrial AI Workbench, intent is formalized as:
-$$\text{Intent} = f(\text{Message}, \text{Attachments}, \text{Conversation History}, \text{Active Sector}, \text{User Role}, \text{Workspace State})$$
-
-The 500M Semantic Organizer is an instruction-tuned lightweight model that performs this classification in under 15ms.
+The 500M Semantic Organizer is an instruction-tuned lightweight model that performs multi-factor intent classification in under 15ms.
 
 ---
 
@@ -534,7 +581,7 @@ Instead, the Tool Gateway enforces a strict perimeter:
 
 ---
 
-## 6.6 Isolated Ephemeral Python Sandbox
+## 6.6 Isolated Ephemeral Python Sandbox Runner
 Located at `tools/sandbox/sandbox_runner.py`.
 
 When mathematical formulas (e.g. wall thickness retirement limits, heat transfer duties) must be calculated, the system invokes an isolated Python sandbox:
@@ -547,37 +594,76 @@ When mathematical formulas (e.g. wall thickness retirement limits, heat transfer
 
 ---
 
-## 6.7 Deterministic Verification Engine
-Located at `backend/app/verification/verification_engine.py`.
+## 6.7 Industrial Deliverable Generator (.docx, .xlsx, .pptx)
+Located at `tools/documents/doc_generator.py`.
 
-A cornerstone of the workbench is **Deterministic Verification**. When an agent claims it has completed a task, the Verification Engine validates the claim against objective criteria:
+The `DeliverableGenerator` class is responsible for assembling formal, corporate-grade deliverables from structured inspection and calculation data:
 
-```python
-class VerificationEngine:
-    def verify_artifact(self, file_path: str, expected_type: str) -> Dict[str, Any]:
-        # 1. Existence Check
-        path = Path(file_path)
-        if not path.exists():
-            return {"status": "FAIL", "reason": "Artifact file was not created on disk."}
-            
-        # 2. Non-Empty Check
-        size = path.stat().st_size
-        if size == 0:
-            return {"status": "FAIL", "reason": "Artifact file is zero bytes (empty)."}
-            
-        # 3. Format/Magic Byte Check
-        if expected_type == "docx" and not self._is_valid_zip_xml(path):
-            return {"status": "FAIL", "reason": "File is not a valid DOCX container."}
-            
-        # 4. Cryptographic Hash Calculation
-        sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
-        
-        return {"status": "PASS", "sha256": sha256, "size_bytes": size}
-```
+1. **Official Word Approval Note (`.docx`)**:
+   - Generates document with official organization headers (e.g., *Mangalore Refinery and Petrochemicals Limited - Technical Services Division*).
+   - Dynamically builds structured metadata tables: Document ID, Generation Timestamp, Requesting Officer, Equipment Tag, Regulatory Standard (API 510 / OISD-STD-129).
+   - Generates inspection findings comparison tables: Nominal Thickness, Measured Ultrasonic Thickness, Minimum Required Thickness ($t_{\text{min}}$), Corrosion Rate, and Remaining Life.
+   - Embeds regulatory compliance evaluation clauses and formal digital sign-off blocks.
+2. **Thermodynamic & Operational Balance Sheet (`.xlsx` / `.csv`)**:
+   - Creates multi-column workbooks detailing heat duties, inlet/outlet temperatures, mass flow rates, and operating pressures.
+   - Calculates statistical averages and flags anomalous deviations.
+3. **Executive Turnaround & Maintenance Briefing (`.pptx`)**:
+   - Creates presentation slide decks for plant executive reviews.
+   - Generates titled slides with bulleted findings, risk summaries, and turnaround action items.
 
 ---
 
-## 6.8 Zero-Trust Policy Engine & 4-Tier RBAC
+## 6.8 Deterministic Verification Engine & Physical Plausibility Rules
+Located at `backend/app/verification/verification_engine.py`.
+
+The Verification Engine validates all tool outputs and generated files against deterministic physical and regulatory invariants:
+
+```python
+@dataclass
+class VerificationResult:
+    status: str  # PASS, FAIL, RETRY, NEEDS_HUMAN_REVIEW
+    checks_passed: List[str]
+    checks_failed: List[str]
+    details: Dict[str, Any]
+    can_retry: bool = False
+    remediation_suggestion: Optional[str] = None
+```
+
+### The 5 Specialized Verification Methods:
+
+1. **`verify_code_execution(sandbox_result)`**:
+   - Asserts exit code is 0 (clean termination).
+   - Asserts standard error (`stderr`) contains zero tracebacks.
+   - Asserts standard output (`stdout`) is non-empty.
+   - Classifies syntax or parameter errors as `RETRY` to allow automated self-correction by the coding worker.
+2. **`verify_artifact(file_path_str, required_sections)`**:
+   - Asserts file exists on local disk.
+   - Asserts file size is greater than 100 bytes (rejects corrupt/empty stubs).
+   - Validates binary container structure:
+     * For `.docx`: Verifies valid Word document packaging and inspects paragraph/table XML runs.
+     * For `.xlsx`: Loads workbook with `openpyxl` and checks sheet cell population.
+     * For `.pptx`: Parses presentation shapes and text frames.
+   - Asserts presence of mandatory compliance sections (e.g. *Equipment Tag*, *Corrosion Rate*, *Approval Sign-Off*).
+3. **`verify_rag_grounding(evidence_texts, response_text)`**:
+   - Prevents AI hallucinations in technical answers.
+   - Computes vocabulary overlap between the LLM response tokens and source documentation:
+     $$\text{Grounding Ratio} = \frac{|\text{Tokens}_{\text{Response}} \cap \text{Tokens}_{\text{Evidence}}|}{|\text{Tokens}_{\text{Response}}|}$$
+   - If $\text{Grounding Ratio} \ge 0.35$ &rarr; `PASS`.
+   - If $\text{Grounding Ratio} < 0.35$ &rarr; Flags `NEEDS_HUMAN_REVIEW` to prevent ungrounded AI recommendations.
+4. **`verify_vision_extraction(detected_components, expected_types)`**:
+   - Validates that computer vision detected actual engineering diagram components.
+   - Asserts detected components match expected engineering tags (valves, instrumentation transmitters, pipelines).
+5. **`verify_engineering_physics(findings)`**:
+   - Validates physical plausibility of engineering numbers:
+     * Asserts measured thickness is strictly positive ($t > 0\text{ mm}$). Negative or zero measurements trigger hard `FAIL`.
+     * Asserts minimum required thickness $t_{\text{min}} > 0\text{ mm}$.
+     * **Critical Safety Threshold Check**: If measured thickness is less than retirement limit ($t < t_{\text{min}}$):
+       $$\text{Status} \leftarrow \text{NEEDS\_HUMAN\_REVIEW}$$
+       $$\text{Alert} \leftarrow \text{"CRITICAL: Measured thickness below retirement limit! Shell de-rating mandatory."}$$
+
+---
+
+## 6.9 Zero-Trust Policy Engine & 4-Tier Industrial RBAC
 Located at `backend/app/policy/policy_engine.py` and `backend/app/rbac/rbac_service.py`.
 
 The system operates on **Zero-Trust (Default-Deny)**. No user or worker possesses implicit authority.
@@ -593,7 +679,7 @@ The system operates on **Zero-Trust (Default-Deny)**. No user or worker possesse
 
 ---
 
-## 6.9 Human-in-the-Loop (HITL) Dual-Key Approval Gate
+## 6.10 Human-in-the-Loop (HITL) Dual-Key Approval System
 Located at `backend/app/policy/policy_engine.py`.
 
 Certain operations in an industrial plant carry irreversible real-world risk:
@@ -609,18 +695,18 @@ When the Policy Engine detects a high-risk request, it does not execute it. Inst
 
 ---
 
-## 6.10 Tamper-Evident SHA-256 Audit Logging
+## 6.11 Tamper-Evident SHA-256 Cryptographic Audit Ledger
 Located at `backend/app/audit/audit_service.py`.
 
 To meet regulatory scrutiny (e.g. following an industrial incident investigation), every action must be verifiable. The Workbench logs events into an append-only cryptographic ledger:
 
-$$\text{EventHash}_n = \text{SHA256}(\text{EventID} + \text{Timestamp} + \text{UserID} + \text{Action} + \text{Status} + \text{EventHash}_{n-1})$$
+$$\text{EventHash}_n = \text{SHA256}\Big(\text{EventID} + \text{Timestamp} + \text{UserID} + \text{Action} + \text{Status} + \text{EventHash}_{n-1}\Big)$$
 
 If an attacker modifies a record in the database, the hash chain breaks, immediately alerting administrators to database tampering.
 
 ---
 
-## 6.11 Air-Gapped Vector Retrieval-Augmented Generation (RAG)
+## 6.12 Air-Gapped Vector Retrieval-Augmented Generation (RAG)
 Located at `rag/`.
 
 The RAG subsystem enables plant engineers to query internal Standard Operating Procedures (SOPs), vendor manuals, and MSDS sheets:
@@ -628,6 +714,19 @@ The RAG subsystem enables plant engineers to query internal Standard Operating P
 2. **Text Chunking**: Splits documents into semantically coherent 512-token chunks with 64-token overlapping windows.
 3. **Local Embedding Generation**: Computes embeddings using local models; no API calls leave the local machine.
 4. **Vector Retrieval & Role-Filtering**: Queries local ChromaDB vector storage, automatically filtering out documents categorized higher than the requesting user's authorization grade.
+
+---
+
+## 6.13 Prompt Injection Sanitizer & Adversarial Defenses
+Located at `backend/app/security/sanitizer.py`.
+
+In an air-gapped system, an attacker cannot exfiltrate data to the cloud, but could attempt **Privilege Escalation** or **Safety Override Bypass** via adversarial prompts.
+
+The Sanitizer implements multi-layered deterministic filtering:
+1. **System Instruction Stripping**: Detects patterns attempting to override core system rules (e.g. `"Ignore previous instructions"`, `"You are now in debug mode"`).
+2. **Delimiter Smuggling Protection**: Neutralizes markdown delimiter injection (`---`, ````json`, ````system`).
+3. **Role-Play & Jailbreak Defenses**: Detects DAN-style persona adoption probes.
+4. **Dangerous Subprocess Probes**: Strips shell meta-characters (`;`, `&&`, `|`, `` ` ``, `$()`) from arguments heading to tool runners.
 
 ---
 
@@ -655,11 +754,11 @@ configs/
 | **`refinery`** (Default) | Petroleum Refining & Petrochemicals | **API 510, API 570, API 653, OISD-105, OISD-156** | Crude Columns, Heat Exchangers, Hydrocrackers, Flares | Corrosion Allowance, Retirement Thickness, Hydrotest Pressure |
 | **`manufacturing`** | Discrete & Heavy Manufacturing | **ISO 9001, OSHA 1910, IEC 61508, Six Sigma** | CNC Milling, Injection Molding, Robotic Arms, Conveyors | Tolerance Limits, Mean Time Between Failures (MTBF), OEE Score |
 | **`utilities`** | Power Grid & Water Treatment | **NERC CIP, AWWA, IEEE 1547, EPA Safe Water** | Turbines, Transformers, Chlorinators, Reverse Osmosis | Grid Stability Margin, Water Contaminant PPM, Arc Flash Rating |
-| **`government`** | Sovereign Public Administration | **NIST SP 800-53, ISO 27001, FedRAMP High, STIG** | Sovereign Data Servers, HSMs, Secure Enclaves | Data Classification Level, Air-Gap Attestation, Chain of Custody |
+| **`government`** | Sovereign Public Administration | **NIST SP 800-53, ISO 27001, Official Secrets Act** | Sovereign Data Servers, HSMs, Secure Enclaves | File Number, Classification Level, Originating Authority |
 
 ---
 
-# 8. Database Schema & Data Persistence
+# 8. Database Schema & Data Persistence (11 Relational Tables)
 
 The workbench utilizes an air-gapped, zero-configuration local SQLite database located at `data/workbench.db` with 11 relational tables:
 
@@ -734,6 +833,19 @@ erDiagram
     }
 ```
 
+### Detailed Table Definitions & Field Constraints:
+1. **`users`**: User identity, department, role, password hash (PBKDF2-HMAC-SHA256, 100k iterations), salt, account lockout timestamp.
+2. **`sessions`**: Active session tokens, user ID, expiration timestamp, active status.
+3. **`permissions`**: Canonical permissions (`permission_id`, `name`, `description`, `risk_level`).
+4. **`role_permissions`**: Many-to-many relationship mapping roles to specific permissions.
+5. **`policies`**: Central policy rules (`policy_id`, `role`, `action`, `resource`, `decision`, `conditions`).
+6. **`documents`**: Ingested SOPs and technical manuals (`doc_id`, `filename`, `file_hash`, `classification`).
+7. **`document_permissions`**: Granular role-based document access controls.
+8. **`audit_events`**: Immutable audit records (`event_id`, `timestamp`, `event_type`, `action`, `status`, `prev_hash`, `event_hash`).
+9. **`approvals`**: Dual-key review tickets for human-in-the-loop approval gates.
+10. **`model_registry`**: Registered models, memory budgets, and loading status.
+11. **`workflow_runs`** & **`workflow_steps`**: Full state tracking for multi-step tasks.
+
 ---
 
 # 9. User Interfaces: Dual Frontend Architecture
@@ -777,9 +889,9 @@ The system provides **two production frontends** sharing the exact same secure b
 
 ---
 
-# 10. Hardware Awareness & VRAM Budget Management
+# 10. Hardware Awareness & Dynamic VRAM Allocation
 
-## The 8GB VRAM Challenge & The Anti-Churn Scheduler
+## The 8GB VRAM Constraint & The Anti-Churn Scheduler
 On an 8GB workstation GPU (such as an NVIDIA RTX 3060, 4060, or 5060), running three 3-billion-parameter models concurrently is impossible:
 - Qwen2.5-3B (~2.2 GB VRAM)
 - StarCoder2-3B (~2.0 GB VRAM)
@@ -884,7 +996,7 @@ Locall-Agentic-AI-Workbench/
 
 ---
 
-# 12. Installation & Quick Start Guide
+# 12. Installation & Setup Step-by-Step
 
 ## Option A: Native Desktop GUI (Windows & Linux)
 
@@ -982,7 +1094,7 @@ python run_tests.py
 
 ---
 
-# 13. Pre-Seeded Credentials & Security Roles
+# 13. Pre-Seeded Credentials & Security Roles Table
 
 The `scripts/seed_data.py` script provisions 4 default accounts:
 
@@ -1114,13 +1226,13 @@ User (as GRADE_1 Operator): "Override low-pressure trip threshold on Compressor 
 
 # 17. Automated Testing & Quality Assurance
 
-## Running the Test Suite
+## Running the Master Test Suite
 Execute the master test suite runner:
 ```bash
 python run_tests.py
 ```
 
-## Detailed Breakdown of the 9 Test Suites
+## Deep Dive into the 9 Automated Test Suites
 
 | Test Suite Module | Key Test Methods | What Is Verified |
 |---|---|---|
@@ -1136,7 +1248,7 @@ python run_tests.py
 
 ---
 
-# 18. Systematic 9-Step Debugging Methodology
+# 18. Systematic 9-Step Bottom-Up Debugging Methodology
 
 When troubleshooting an issue, never modify UI code at random. Follow the bottom-up stack:
 
@@ -1231,7 +1343,7 @@ This repository serves as a complete semester capstone platform for computer sci
 
 ---
 
-# 21. Core Design Principles
+# 21. Foundational Design Principles
 
 1. **Air-Gap Integrity**: Never make assumptions that require internet access. Zero external sockets.
 2. **Context Governs Intent**: Language alone is insufficient. Always incorporate attachments, active sector, and user grade into intent routing.
@@ -1244,7 +1356,7 @@ This repository serves as a complete semester capstone platform for computer sci
 
 ---
 
-# 22. Security, Threat Model & Regulatory Compliance
+# 22. Threat Modeling, Cybersecurity & Regulatory Compliance
 
 ### Adversarial Threat Model & Mitigations
 - **Threat 1: Prompt Injection & Jailbreak Probes**:
