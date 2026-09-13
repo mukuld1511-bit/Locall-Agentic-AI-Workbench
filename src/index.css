@@ -1,1 +1,373 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
+
+.font-cursive {
+  font-family: 'Dancing Script', cursive;
+}
+
+.font-modern {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+:root {
+  --bg-light: #fdfdfd;
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: rgba(0, 0, 0, 0.05);
+  --accent-primary: #6366f1;
+  --accent-secondary: #0ea5e9;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-light);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* Background Animated Gradient - Aurora Light Theme */
+.animated-bg {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200vw;
+  height: 200vh;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(249, 168, 212, 0.25) 0%, transparent 40%),
+    radial-gradient(circle at 70% 20%, rgba(192, 132, 252, 0.25) 0%, transparent 40%),
+    radial-gradient(circle at 20% 80%, rgba(134, 239, 172, 0.25) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(147, 197, 253, 0.25) 0%, transparent 40%);
+  filter: blur(80px);
+  animation: aurora-shift 30s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-shift {
+  0% {
+    transform: scale(1) translate(0%, 0%) rotate(0deg);
+  }
+
+  50% {
+    transform: scale(1.1) translate(5%, -5%) rotate(5deg);
+  }
+
+  100% {
+    transform: scale(1) translate(-2%, 5%) rotate(-5deg);
+  }
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px var(--glass-shadow);
+  border-radius: 12px;
+}
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--glass-border);
+}
+
+.glass-header {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* Premium Buttons */
+.premium-btn {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.premium-btn:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.premium-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border: none;
+  color: #fff;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+.premium-btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+  transform: translateY(-1px) scale(1.02);
+}
+
+/* Chat Bubbles */
+.chat-bubble-user {
+  background: linear-gradient(135deg, #eff6ff, #e0e7ff);
+  border: 1px solid #c7d2fe;
+  border-radius: 16px 16px 4px 16px;
+  color: #1e293b;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+
+.chat-bubble-ai {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px 16px 16px 4px;
+  color: #334155;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.03);
+}
+
+/* Input Area */
+.premium-input-container {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  backdrop-filter: blur(12px);
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+}
+
+.premium-input-container:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 10px 40px rgba(99, 102, 241, 0.1);
+}
+
+.premium-input {
+  background: transparent;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.premium-input::placeholder {
+  color: var(--text-secondary);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ─── AI Thinking Animation ─── */
+.ai-thinking {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ai-thinking-orb {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.ai-thinking-orb::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #818cf8, #06b6d4);
+  animation: orb-pulse 2s ease-in-out infinite;
+}
+
+.ai-thinking-orb::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  animation: orb-ripple 2s ease-out infinite;
+}
+
+@keyframes orb-pulse {
+
+  0%,
+  100% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes orb-ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.ai-thinking-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.ai-thinking-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #818cf8, #06b6d4);
+  animation: dot-bounce 1.4s ease-in-out infinite;
+}
+
+.ai-thinking-dots span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.ai-thinking-dots span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes dot-bounce {
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+
+  30% {
+    transform: translateY(-8px);
+    opacity: 1;
+  }
+}
+
+.ai-thinking-text {
+  font-size: 13px;
+  font-weight: 500;
+  background: linear-gradient(90deg, #818cf8, #06b6d4, #818cf8);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer-text 2s linear infinite;
+}
+
+@keyframes shimmer-text {
+  0% {
+    background-position: 0% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* ─── Industrial Machinery Simulation Animations ─── */
+@keyframes spin-machine {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes machine-vibration {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  25% {
+    transform: translate(-1px, 1px);
+  }
+
+  50% {
+    transform: translate(1px, -1px);
+  }
+
+  75% {
+    transform: translate(-1px, -1px);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes fluid-pulse {
+  0% {
+    stroke-dashoffset: 40;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes danger-beacon {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+.animate-spin-fast {
+  animation: spin-machine 0.4s linear infinite;
+}
+
+.animate-spin-medium {
+  animation: spin-machine 1.2s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-machine 3.5s linear infinite;
+}
+
+.animate-machine-vibrate {
+  animation: machine-vibration 0.08s linear infinite;
+}
+
+.animate-fluid-flow {
+  stroke-dasharray: 6 4;
+  animation: fluid-pulse 0.8s linear infinite;
+}
+
+.animate-beacon {
+  animation: danger-beacon 1.4s ease-in-out infinite;
+}

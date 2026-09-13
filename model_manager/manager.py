@@ -18,10 +18,227 @@ from model_manager.registry import REGISTRY, WorkerModelDefinition
 from model_manager.adapters.base import WorkerInferenceResponse
 
 
+
+def _normalize_adapter_response(
+    response,
+    worker_type,
+):
+    """
+    Convert every adapter response into WorkerInferenceResponse.
+
+    This prevents adapters returning dictionaries from breaking
+    the ModelManager state/audit layer.
+    """
+
+    if isinstance(
+        response,
+        WorkerInferenceResponse,
+    ):
+        return response
+
+    if isinstance(
+        response,
+        dict,
+    ):
+
+        content = response.get(
+            "content",
+            response.get(
+                "text",
+                response.get(
+                    "response",
+                    response.get(
+                        "answer",
+                        "",
+                    ),
+                ),
+            ),
+        )
+
+        tokens = response.get(
+            "tokens_generated",
+            response.get(
+                "completion_tokens",
+                response.get(
+                    "tokens",
+                    0,
+                ),
+            ),
+        )
+
+        status = response.get(
+            "status",
+            "success",
+        )
+
+        error = response.get(
+            "error_message",
+            response.get(
+                "error",
+                "",
+            ),
+        )
+
+        try:
+            tokens = int(tokens or 0)
+        except Exception:
+            tokens = 0
+
+        return WorkerInferenceResponse(
+            worker_type=worker_type,
+            status=str(status or "success"),
+            content=str(content or ""),
+            tokens_generated=tokens,
+            error_message=str(error or ""),
+        )
+
+    # Generic compatible object.
+    return WorkerInferenceResponse(
+        worker_type=worker_type,
+        status=str(
+            getattr(
+                response,
+                "status",
+                "success",
+            ) or "success"
+        ),
+        content=str(
+            getattr(
+                response,
+                "content",
+                "",
+            ) or ""
+        ),
+        tokens_generated=int(
+            getattr(
+                response,
+                "tokens_generated",
+                getattr(
+                    response,
+                    "tokens",
+                    0,
+                ),
+            ) or 0
+        ),
+        error_message=str(
+            getattr(
+                response,
+                "error_message",
+                "",
+            ) or ""
+        ),
+    )
+
+
+
+def normalize_worker_response(
+    response,
+    worker_type: str,
+):
+    from model_manager.adapters.base import WorkerInferenceResponse
+
+    if isinstance(
+        response,
+        WorkerInferenceResponse,
+    ):
+        return response
+
+    if isinstance(
+        response,
+        dict,
+    ):
+
+        return WorkerInferenceResponse(
+            worker_type=worker_type,
+            status=str(
+                response.get(
+                    "status",
+                    "success",
+                )
+            ),
+            content=str(
+                response.get(
+                    "content",
+                    response.get(
+                        "text",
+                        response.get(
+                            "response",
+                            "",
+                        ),
+                    ),
+                )
+                or ""
+            ),
+            tokens_generated=int(
+                response.get(
+                    "tokens_generated",
+                    response.get(
+                        "tokens",
+                        response.get(
+                            "completion_tokens",
+                            0,
+                        ),
+                    ),
+                )
+                or 0
+            ),
+            error_message=str(
+                response.get(
+                    "error_message",
+                    response.get(
+                        "error",
+                        "",
+                    ),
+                )
+                or ""
+            ),
+        )
+
+    return WorkerInferenceResponse(
+        worker_type=worker_type,
+        status=str(
+            getattr(
+                response,
+                "status",
+                "success",
+            )
+            or "success"
+        ),
+        content=str(
+            getattr(
+                response,
+                "content",
+                "",
+            )
+            or ""
+        ),
+        tokens_generated=int(
+            getattr(
+                response,
+                "tokens_generated",
+                getattr(
+                    response,
+                    "tokens",
+                    0,
+                ),
+            )
+            or 0
+        ),
+        error_message=str(
+            getattr(
+                response,
+                "error_message",
+                "",
+            )
+            or ""
+        ),
+    )
+
+
 class ModelManager:
     def __init__(self):
         self.registry = REGISTRY
-        self.vram_budget_mb = GLOBAL_CONFIG.VRAM_BUDGET_MB - GLOBAL_CONFIG.VRAM_RESERVE_MB  # e.g. 7168 MB
+        self.vram_budget_mb = GLOBAL_CONFIG.VRAM_BUDGET_MB - GLOBAL_CONFIG.VRAM_RESERVE_MB  # e.g. configured active memory budget
         self.lock = threading.RLock()
         self.active_workers: Dict[str, WorkerModelDefinition] = {}
         self.model_states: Dict[str, str] = {
@@ -216,7 +433,16 @@ class ModelManager:
 
             start_infer = time.time()
             try:
-                resp = worker.adapter.generate(prompt, system_prompt, **kwargs)
+                raw_resp = worker.adapter.generate(
+                    prompt,
+                    system_prompt,
+                    **kwargs,
+                )
+
+                resp = _normalize_adapter_response(
+                    raw_resp,
+                    canonical_type,
+                )
             finally:
                 self._set_model_state(canonical_type, "IDLE")
             infer_latency = (time.time() - start_infer) * 1000.0

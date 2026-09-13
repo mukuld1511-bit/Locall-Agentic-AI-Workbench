@@ -56,6 +56,7 @@ class WorkflowEngine:
         self.model_mgr = MODEL_MGR
         self.tool_gateway = TOOL_GATEWAY
         self.verification = VERIFICATION
+        self.audit = AUDIT
 
     def execute_workflow(
         self,

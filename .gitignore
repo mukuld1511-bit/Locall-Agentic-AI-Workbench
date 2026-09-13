@@ -1,39 +1,21 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
 node_modules/
 build/
 dist/
 coverage/
+
+# OS
 .DS_Store
-*.log
+
+# Environment
 .env*
 !.env.example
-
-# Local runtime / development
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-
-# Local runtime database
-data/*.db
-data/*.sqlite
-data/*.sqlite3
-
-# Generated test artifacts
-data/artifacts/
-
-# Local logs
-*.log
-
-# Local model/runtime files
-models/
-*.gguf
-*.safetensors
-
-# Runtime
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
 
 # Runtime databases
 data/*.db
@@ -42,89 +24,42 @@ data/*.sqlite3
 
 # Generated artifacts
 data/artifacts/
-
-# Logs
-*.log
-
-# Local models
-models/
-*.gguf
-*.safetensors
-
-# Local backup
-.backup_before_bulk/
-
-# Local development
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-
-# Runtime databases
-data/*.db
-data/*.sqlite
-data/*.sqlite3
-
-# Runtime artifacts
-data/artifacts/
-
-# Logs
-*.log
-
-# Local models
-models/
-*.gguf
-*.safetensors
-
-# Autonomous run files
-.maxwork_backup/
-.maxwork_source_inventory.txt
-MAX_WORK.log
-MAX_WORK_REPORT.md
-
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-
-data/*.db
-data/*.sqlite
-data/*.sqlite3
-data/artifacts/
-
-*.log
-
-models/
-*.gguf
-*.safetensors
-
-.finish_backup/
-
-# Python
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-
-# Runtime state
-data/*.db
-data/*.sqlite
-data/*.sqlite3
-data/artifacts/
 data/rag_index/
 
 # Logs
+logs/
 *.log
 
-# Local model binaries
+# Local model binaries (large files)
 models/
 *.gguf
 *.safetensors
 *.pt
 *.pth
 
-# Temporary engineering backups
-.phase2_backup/
+# Runtime binaries
+runtime/llama/
+runtime/sandbox/
 
-# Phase logs
-PHASE2_FINISH.log
+# Vision media (user uploads)
+vision-media/
+
+# Engineering backups
+.backup_before_bulk/
+.maxwork_backup/
+.maxwork_source_inventory.txt
+.finish_backup/
+.phase2_backup/
+MAX_WORK_REPORT.md
+PHASE2_REPORT.md
+EMPLOYEE_ADMIN_REPORT.md
+
+# Backup files
+*.before_*
+*.bak
+
+# Autonomous scripts
+FINISH_EVERYTHING.sh
+MAX_WORK_FINISH.sh
+FINISH_EMPLOYEE_ADMIN.sh
+PHASE2_FINISH.sh

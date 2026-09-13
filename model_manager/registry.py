@@ -38,6 +38,25 @@ class ModelRegistry:
         # 1. 500M Organizer Model (trained safetensors)
         organizer_path = "/home/piet/sih-workbench/organizer/models/organizer-final"
 
+        # Use the real TransformersOrganizerAdapter when the trained
+        # safetensors checkpoint is available (Linux deployment).
+        # On Windows or when the checkpoint is absent, fall back to
+        # MockDevAdapter so the rest of the pipeline keeps working.
+        import os
+        if os.path.isdir(organizer_path):
+            organizer_adapter = TransformersOrganizerAdapter(
+                "organizer",
+                "Organizer-500M-Industrial-v1",
+                organizer_path,
+            )
+        else:
+            organizer_adapter = MockDevAdapter(
+                worker_type="organizer",
+                model_name="Organizer-500M-Industrial-v1",
+                vram_mb=1200,
+                ram_mb=2048,
+            )
+
         self.register_worker(
             WorkerModelDefinition(
                 worker_type="organizer",
@@ -56,11 +75,7 @@ class ModelRegistry:
                 ],
                 vram_required_mb=1200,
                 ram_required_mb=2048,
-                adapter=TransformersOrganizerAdapter(
-                    "organizer",
-                    "Organizer-500M-Industrial-v1",
-                    organizer_path,
-                ),
+                adapter=organizer_adapter,
             )
         )
 
@@ -69,7 +84,7 @@ class ModelRegistry:
             WorkerModelDefinition(
                 worker_type="general",
                 model_name="Qwen2.5-3B-Instruct-Q4_K_M",
-                file_path="/home/piet/sih-workbench/models/qwen2.5-3b/qwen2.5-3b-instruct-q4_k_m.gguf",
+                file_path="models/qwen2.5-3b/qwen2.5-3b-instruct-q4_k_m.gguf",
                 checksum_sha256="a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef",
                 license="Apache-2.0",
                 capabilities=["reasoning", "summarization", "synthesis", "audit_note_generation"],
@@ -88,16 +103,16 @@ class ModelRegistry:
         self.register_worker(
             WorkerModelDefinition(
                 worker_type="coding",
-                model_name="StarCoder2-3B-Instruct-Q4_K_M",
-                file_path="/home/piet/sih-workbench/models/starcoder2-3b/starcoder2-3b-instruct.Q4_K_M.gguf",
-                checksum_sha256="c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef1234",
+                model_name="Qwen2.5-Coder-3B-Instruct-Q4_K_M",
+                file_path="models/qwen2.5-coder-3b/qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+                checksum_sha256="724fb256bec1ff062b2f65e4569e871ad2e95ab2a3989723d1769c54294730b7",
                 license="BigCode OpenRAIL-M v1",
                 capabilities=["python", "engineering_math", "api510_calc", "data_processing", "debugging"],
                 vram_required_mb=3000,
                 ram_required_mb=4096,
                 adapter=LlamaCppAdapter(
                     worker_type="coding",
-                    model_name="StarCoder2-3B-Instruct-Q4_K_M",
+                    model_name="Qwen2.5-Coder-3B-Instruct-Q4_K_M",
                     endpoint="http://127.0.0.1:8092",
                     vram_mb=3000,
                 ),
@@ -109,7 +124,7 @@ class ModelRegistry:
             WorkerModelDefinition(
                 worker_type="vision",
                 model_name="Qwen2.5-VL-3B-Instruct-Q4_K_M",
-                file_path="/home/piet/sih-workbench/models/Qwen2.5-VL-3B-Instruct-GGUF/Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
+                file_path="models/Qwen2.5-VL-3B-Instruct-GGUF/Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
                 checksum_sha256="d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef123456",
                 license="Apache-2.0",
                 capabilities=["diagram_analysis", "pid_inspection", "scanned_doc_ocr", "defect_detection"],
@@ -120,8 +135,8 @@ class ModelRegistry:
                     model_name="Qwen2.5-VL-3B-Instruct-Q4_K_M",
                     endpoint="http://127.0.0.1:8093",
                     vram_mb=4100,
-                    mmproj_path="/home/piet/sih-workbench/models/Qwen2.5-VL-3B-Instruct-GGUF/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf",
-                    media_path="/home/piet/vision-media",
+                    mmproj_path="models/Qwen2.5-VL-3B-Instruct-GGUF/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf",
+                    media_path="runtime/vision-media",
                 ),
             )
         )
@@ -131,7 +146,7 @@ class ModelRegistry:
             WorkerModelDefinition(
                 worker_type="document",
                 model_name="Gemma-3-4B-IT-Q4_K_M",
-                file_path="/home/piet/sih-workbench/models/qwen2.5-3b/qwen2.5-3b-instruct-q4_k_m.gguf",
+                file_path="models/gemma3-4b/google_gemma-3-4b-it-Q4_K_M.gguf",
                 checksum_sha256="e5f678901234567890abcdef1234567890abcdef1234567890abcdef12345678",
                 license="Gemma Terms of Use",
                 capabilities=["rag_synthesis", "sop_comparison", "table_extraction", "compliance_audit"],
@@ -177,3 +192,6 @@ class ModelRegistry:
 
 
 REGISTRY = ModelRegistry()
+
+
+

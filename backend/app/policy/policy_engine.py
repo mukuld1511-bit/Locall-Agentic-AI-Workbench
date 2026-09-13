@@ -162,12 +162,42 @@ class PolicyEngine:
         if tool in ["rag_search", "doc_search", "file_read"] or action in ["rag_search", "doc_search", "file_read"]:
             return PolicyEvaluationResult("ALLOW", "Local document query permitted under sensitivity constraints.", "LOW")
 
+        if tool == "terminal_run" or action == "terminal_run":
+            if not RBAC.has_permission(role_upper, "TERMINAL_EXECUTE"):
+                self._log_audit(user_id, role_upper, action, resource, tool, "DENY", "HIGH", "Role lacks TERMINAL_EXECUTE permission", request_id)
+                return PolicyEvaluationResult("DENY", f"Access Denied: Role '{role_upper}' cannot execute terminal commands. Restricted to Grade 2 or higher.", "HIGH")
+            return PolicyEvaluationResult("ALLOW", "Terminal execution permitted under safety policies.", "MEDIUM")
+
+        if tool == "file_write" or action == "file_write":
+            if not RBAC.has_permission(role_upper, "FILE_WRITE_WORKSPACE"):
+                self._log_audit(user_id, role_upper, action, resource, tool, "DENY", "MEDIUM", "Role lacks FILE_WRITE_WORKSPACE permission", request_id)
+                return PolicyEvaluationResult("DENY", f"Access Denied: Role '{role_upper}' cannot modify files. Grade 1 Operator is read-only.", "MEDIUM")
+            return PolicyEvaluationResult("ALLOW", "Workspace file write permitted.", "MEDIUM")
+
+        if tool == "file_create" or action == "file_create":
+            if not RBAC.has_permission(role_upper, "FILE_CREATE_WORKSPACE"):
+                self._log_audit(user_id, role_upper, action, resource, tool, "DENY", "MEDIUM", "Role lacks FILE_CREATE_WORKSPACE permission", request_id)
+                return PolicyEvaluationResult("DENY", f"Access Denied: Role '{role_upper}' cannot create new files. Requires Grade 2 or higher.", "MEDIUM")
+            return PolicyEvaluationResult("ALLOW", "Workspace file creation permitted.", "MEDIUM")
+
+        if tool == "file_delete" or action == "file_delete":
+            if not RBAC.has_permission(role_upper, "FILE_DELETE_WORKSPACE"):
+                self._log_audit(user_id, role_upper, action, resource, tool, "DENY", "HIGH", "Role lacks FILE_DELETE_WORKSPACE permission", request_id)
+                return PolicyEvaluationResult("DENY", f"Access Denied: File deletion requires Grade 3 (Superintendent) or ADMIN clearance.", "HIGH")
+            return PolicyEvaluationResult("ALLOW", "File deletion authorized.", "HIGH")
+
+        if tool == "db_query" or action == "db_query":
+            if not RBAC.has_permission(role_upper, "DB_EXECUTE_QUERY"):
+                self._log_audit(user_id, role_upper, action, resource, tool, "DENY", "MEDIUM", "Role lacks DB_EXECUTE_QUERY permission", request_id)
+                return PolicyEvaluationResult("DENY", f"Access Denied: Role '{role_upper}' cannot execute custom queries on presentation database.", "MEDIUM")
+            return PolicyEvaluationResult("ALLOW", "Database query permitted in read-only mode.", "LOW")
+
         # 5. Standard Chat Interaction
         if action == "chat":
             return PolicyEvaluationResult("ALLOW", "Local chat permitted.", "LOW")
 
         # 6. Admin Actions
-        if action.startswith("admin_"):
+        if action.startswith("admin_") or action in ["create_employee", "employee_manage"]:
             if role_upper != "ADMIN":
                 self._log_audit(user_id, role_upper, action, resource, tool, "DENY", "CRITICAL", "Administrative privilege escalation attempt blocked", request_id)
                 return PolicyEvaluationResult("DENY", "Access Denied: Administrative operations require ADMIN role.", "CRITICAL")
