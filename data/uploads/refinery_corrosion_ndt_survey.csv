@@ -1,0 +1,13 @@
+circuit_id,equipment_tag,service_fluid,pipe_spec,nominal_wt_mm,min_allowable_tmin_mm,measured_thickness_mm,corrosion_rate_mpy,inspection_method,calc_remaining_life_yrs,asme_b31g_status,recommended_action
+CKT-301-01,PUMP_301A_DISCH,Heavy Sour Naphtha,"A106-B / 8"" Sch 40",8.18,3.2,2.15,18.4,UT Phased Array,0.0,CRITICAL_FAILURE,IMMEDIATE TRIP & B31G CLAMP REPAIR
+CKT-301-02,PUMP_301B_DISCH,Heavy Sour Naphtha,"A106-B / 8"" Sch 40",8.18,3.2,6.42,3.1,UT Grid 100mm,10.4,ACCEPTABLE,Routine monitoring at 24mo cycle
+CKT-301-03,V-301_OVERHEAD,H2S / Hydrocarbon Vapor,"A333-Gr6 / 14"" Sch 40",11.13,4.5,8.2,5.2,Digital Radiography,7.1,MONITOR,Inspect at next turnaround Q3 2027
+CKT-301-04,E-301_COND_OUT,Wet Sour Distillate,"316L SS / 8"" Sch 10S",3.76,1.8,2.95,1.8,PEC Pulsed Eddy,6.4,ACCEPTABLE,Baseline re-verify in 18mo
+CKT-301-05,V-302_BOOT_DRAIN,Sour Sour Water / H2S,"A106-B / 4"" Sch 80",8.56,3.8,3.42,22.8,UT Spot Wall,0.0,RETIREMENT_REACHED,Replace circuit spools with Inconel 625
+CKT-301-06,C-102_SUCTION_KOD,Hydrogen Rich Gas 45BAR,A516-Gr70 / Vessel Shell,28.5,14.0,24.1,2.4,UT Phased Array,42.1,ACCEPTABLE,Clean integrity clearance
+CKT-301-07,C-102_1ST_STAGE_OUT,Hydrogen Gas 110BAR,"A335-P11 / 6"" Sch 160",18.26,8.9,16.4,1.9,Time of Flight Diff (TOFD),39.5,ACCEPTABLE,Optimal condition
+CKT-301-08,C-102_INTERCOOLER_TB,Treated Demin Water,Titanium Gr2 Tubes,1.65,0.7,0.74,4.2,Internal Rotary Inspection (IRIS),0.9,ACTION_REQUIRED,Plug 14 leaking tubes during outage
+CKT-301-09,F-201_FURNACE_COIL_5,Atmospheric Residue 380C,"A335-P9 / 4"" Sch 120",11.1,4.2,5.1,8.7,Laser Profilometry,1.0,HIGH_RISK,Schedule decoking and smart pigging
+CKT-301-10,T-401_CRUDE_CHARGE,Desalted Crude Oil,"API 5L-X52 / 24"" Sch 20",9.53,3.5,7.8,2.5,Magnetic Flux Leakage (MFL),17.2,ACCEPTABLE,Next pigging run in 36mo
+CKT-301-11,R-101_HYDROTREATER_BED,Hydrotreated Diesel / H2,2.25Cr-1Mo-V Forged,145.0,95.0,141.2,0.6,Automated PAUT + TOFD,77.0,ACCEPTABLE,Zero high-temperature hydrogen attack (HTHA)
+CKT-301-12,REFLUX_LINE_BENT_ELB,Sour Naphtha 60C,"A106-B / 6"" LR 90 Elbow",7.11,2.8,2.75,14.5,UT Phased Array B-Scan,0.0,CRITICAL_FAILURE,Immediate composite sleeve or spool replacement

@@ -10,7 +10,9 @@ import {
   Paperclip, Image, Upload, AlertTriangle, ShieldAlert, LogIn, LogOut,
   UserCheck, Table, FileSpreadsheet, Lock, ExternalLink, TerminalSquare,
   FolderPlus, Gauge, Radio, Octagon, Flame, Power, Disc,
-  Network, GitFork, ArrowDown, Cpu as CpuIcon
+  Network, GitFork, ArrowDown, Cpu as CpuIcon,
+  RotateCcw, SlidersHorizontal, TrendingUp, TrendingDown, Wind,
+  Download, Filter
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Editor from '@monaco-editor/react';
@@ -217,10 +219,13 @@ export default function App() {
   const [dbActiveTable, setDbActiveTable] = useState<string>('equipment');
   const [dbColumns, setDbColumns] = useState<string[]>([]);
   const [dbRows, setDbRows] = useState<any[]>([]);
-  const [dbQueryText, setDbQueryText] = useState<string>('SELECT * FROM equipment LIMIT 20;');
+  const [dbQueryText, setDbQueryText] = useState<string>('SELECT * FROM equipment LIMIT 25;');
   const [dbAnalytics, setDbAnalytics] = useState<any>(null);
   const [dbLoading, setDbLoading] = useState<boolean>(false);
   const [dbError, setDbError] = useState<string>('');
+  const [dbSearchQuery, setDbSearchQuery] = useState<string>('');
+  const [dbSelectedRow, setDbSelectedRow] = useState<any | null>(null);
+
 
   // ─── EMPLOYEES STATE ───
   const [employeeList, setEmployeeList] = useState<any[]>([]);
@@ -239,11 +244,33 @@ export default function App() {
   const [selectedMachineId, setSelectedMachineId] = useState<string>('PUMP_301A');
   const [machineVoiceCommand, setMachineVoiceCommand] = useState<string>('');
   const [machineAiLoading, setMachineAiLoading] = useState<boolean>(false);
+  const [isMachineChatOpen, setIsMachineChatOpen] = useState<boolean>(true);
   const [machineActionBanner, setMachineActionBanner] = useState<{
     type: 'success' | 'blocked' | 'info';
     title: string;
     description: string;
   } | null>(null);
+  const [machineChatHistory, setMachineChatHistory] = useState<Array<{
+    sender: 'user' | 'ai';
+    text: string;
+    timestamp: string;
+    status?: 'granted' | 'blocked';
+  }>>([
+    {
+      sender: 'ai',
+      text: '🤖 Sovereign SCADA Actuator initialized. Ask me to monitor, throttle, start, or emergency trip refinery machinery. Central Policy Engine validates your clearance grade before any physical actuator responds.',
+      timestamp: new Date().toLocaleTimeString()
+    }
+  ]);
+
+  // ─── ADVANCED MACHINERY FEATURES STATE ───
+  const [activeMachineModal, setActiveMachineModal] = useState<'none' | 'diagnostics' | 'replay' | 'work_order'>('none');
+  const [machineDiagnosticsData, setMachineDiagnosticsData] = useState<any>(null);
+  const [machineReplayData, setMachineReplayData] = useState<any>(null);
+  const [isDiagnosticsLoading, setIsDiagnosticsLoading] = useState<boolean>(false);
+  const [workOrderDescription, setWorkOrderDescription] = useState<string>('');
+  const [workOrderPriority, setWorkOrderPriority] = useState<string>('HIGH');
+  const [workOrderResult, setWorkOrderResult] = useState<any>(null);
 
   // ─── ARCHITECTURE & WORKFLOW DIAGRAM STATE ───
   const [architectureView, setArchitectureView] = useState<'system' | 'llm_layers' | 'workflow'>('system');
@@ -289,7 +316,13 @@ export default function App() {
     if (activeTab === 'database') { fetchDbSchema(); fetchDbAnalytics(); }
     if (activeTab === 'employees') fetchEmployees();
     if (activeTab === 'audit') fetchAuditLogs();
-    if (activeTab === 'machinery') fetchMachinery();
+    if (activeTab === 'machinery') {
+      fetchMachinery();
+      const machInterval = setInterval(() => {
+        fetchMachinery();
+      }, 2500);
+      return () => clearInterval(machInterval);
+    }
   }, [activeTab]);
 
   // Active Session Token State
@@ -443,6 +476,38 @@ export default function App() {
       name: 'industrial_demo.db',
       path: 'data/demo_db/industrial_demo.db',
       type: 'database',
+    });
+  };
+
+  const attachDemoPidBlueprint = () => {
+    setCurrentAttachment({
+      name: 'pid_crude_cdu301_blueprint.png',
+      path: 'data/demo_showcase/pid_crude_cdu301_blueprint.png',
+      type: 'image',
+    });
+  };
+
+  const attachDemoNdtSurvey = () => {
+    setCurrentAttachment({
+      name: 'refinery_corrosion_ndt_survey.csv',
+      path: 'data/demo_showcase/refinery_corrosion_ndt_survey.csv',
+      type: 'csv',
+    });
+  };
+
+  const attachDemoVibrationStream = () => {
+    setCurrentAttachment({
+      name: 'pump301a_vibration_accelerometer_stream.csv',
+      path: 'data/demo_showcase/pump301a_vibration_accelerometer_stream.csv',
+      type: 'csv',
+    });
+  };
+
+  const attachDemoIncidentReport = () => {
+    setCurrentAttachment({
+      name: 'osha_psm_critical_incident_investigation.txt',
+      path: 'data/demo_showcase/osha_psm_critical_incident_investigation.txt',
+      type: 'document',
     });
   };
 
@@ -844,6 +909,38 @@ export default function App() {
     }
   };
 
+  const exportDbToCsv = () => {
+    if (!dbRows || dbRows.length === 0 || !dbColumns || dbColumns.length === 0) return;
+    const header = dbColumns.join(',');
+    const rows = dbRows.map(row =>
+      dbColumns.map(col => {
+        const val = row[col];
+        if (val === null || val === undefined) return '""';
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+      }).join(',')
+    );
+    const csvContent = 'data:text/csv;charset=utf-8,' + [header, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${dbActiveTable || 'query_export'}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportDbToJson = () => {
+    if (!dbRows || dbRows.length === 0) return;
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(dbRows, null, 2))}`;
+    const link = document.createElement('a');
+    link.setAttribute('href', jsonString);
+    link.setAttribute('download', `${dbActiveTable || 'query_export'}_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // ─── EMPLOYEE REGISTRATION ───
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -891,9 +988,18 @@ export default function App() {
     } catch {}
   };
 
-  const handleMachineControl = async (machineId: string, action: string, cmdText?: string) => {
+  const handleMachineControl = async (machineId: string, action: string, cmdText?: string, params?: Record<string, any>) => {
     setMachineAiLoading(true);
     setMachineActionBanner(null);
+    const userPrompt = cmdText || `Command: ${action} machine ${machineId}`;
+    const timestamp = new Date().toLocaleTimeString();
+
+    // Append user command into machine chat stream
+    setMachineChatHistory(prev => [
+      ...prev,
+      { sender: 'user', text: userPrompt, timestamp }
+    ]);
+
     try {
       const r = await fetch(`${API}/api/machinery/control`, {
         method: 'POST',
@@ -901,23 +1007,34 @@ export default function App() {
         body: JSON.stringify({
           machine_id: machineId,
           action: action,
-          command_text: cmdText || `AI Prompt: "${action} machine ${machineId}"`
+          command_text: userPrompt,
+          parameters: params
         })
       });
       const d = await r.json();
       if (r.ok && d.success) {
+        const msg = d.message || `Machine ${machineId} transitioned to ${action} status. SCADA relay tripped.`;
         setMachineActionBanner({
           type: 'success',
           title: 'Central Policy Engine: GRANTED',
-          description: d.message || `Machine ${machineId} transitioned to ${action}.`
+          description: msg
         });
+        setMachineChatHistory(prev => [
+          ...prev,
+          { sender: 'ai', text: `✓ GRANTED: ${msg}`, timestamp: new Date().toLocaleTimeString(), status: 'granted' }
+        ]);
         fetchMachinery();
       } else {
+        const errMsg = d.message || d.reason || 'Insufficient role clearance for machine override.';
         setMachineActionBanner({
           type: 'blocked',
           title: 'Central Policy Engine: BLOCKED (Default-Deny)',
-          description: d.message || d.reason || 'Insufficient role clearance for machine override.'
+          description: errMsg
         });
+        setMachineChatHistory(prev => [
+          ...prev,
+          { sender: 'ai', text: `⚠️ BLOCKED (Fail-Closed): ${errMsg}`, timestamp: new Date().toLocaleTimeString(), status: 'blocked' }
+        ]);
       }
     } catch (e: any) {
       setMachineActionBanner({
@@ -925,6 +1042,10 @@ export default function App() {
         title: 'Communication Failure',
         description: e.message
       });
+      setMachineChatHistory(prev => [
+        ...prev,
+        { sender: 'ai', text: `✗ Communication error: ${e.message}`, timestamp: new Date().toLocaleTimeString(), status: 'blocked' }
+      ]);
     } finally {
       setMachineAiLoading(false);
     }
@@ -942,19 +1063,25 @@ export default function App() {
     else if (text.includes('blower') || text.includes('furnace') || text.includes('401')) targetId = 'FURNACE_BLOWER_401';
     else if (text.includes('turbine') || text.includes('fcc') || text.includes('205') || text.includes('expander')) targetId = 'EXPANDER_TURBINE_205';
 
-    // Determine action
+    // Determine action & parameters
     let action = 'STOP';
+    let params: Record<string, any> | undefined = undefined;
+
     if (text.includes('emergency') || text.includes('shutdown') || text.includes('trip')) {
       action = 'EMERGENCY_SHUTDOWN';
-    } else if (text.includes('stop') || text.includes('halt') || text.includes('ruk') || text.includes('roko')) {
+    } else if (text.includes('purge') || text.includes('relief') || text.includes('depressurize') || text.includes('pressure relief')) {
+      action = 'PURGE_VALVE';
+    } else if (text.includes('boost') || text.includes('badhao') || text.includes('increase') || text.includes('tez') || text.includes('speed up')) {
+      action = 'BOOST';
+    } else if (text.includes('stop') || text.includes('halt') || text.includes('ruk') || text.includes('roko') || text.includes('band')) {
       action = 'STOP';
     } else if (text.includes('start') || text.includes('resume') || text.includes('chalu') || text.includes('chalao')) {
       action = 'START';
-    } else if (text.includes('throttle') || text.includes('slow') || text.includes('dheere')) {
+    } else if (text.includes('throttle') || text.includes('slow') || text.includes('dheere') || text.includes('kam')) {
       action = 'THROTTLE';
     }
 
-    handleMachineControl(targetId, action, `Spoken/AI Command: "${machineVoiceCommand}"`);
+    handleMachineControl(targetId, action, machineVoiceCommand, params);
     setMachineVoiceCommand('');
   };
 
@@ -989,24 +1116,24 @@ export default function App() {
           </div>
         </div>
 
-        {/* Sequential Central Login Card */}
-        <div className="max-w-md w-full glass-panel p-8 shadow-2xl relative z-20 border border-slate-200/80 rounded-2xl">
+        {/* Strict Brutal Central Login Card */}
+        <div className="max-w-md w-full bg-white p-8 relative z-20 border-[3px] border-black shadow-[8px_8px_0px_#000000]">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 mx-auto mb-3">
-              <span className="font-cursive text-3xl font-black">M</span>
+            <div className="w-14 h-14 bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 border-2 border-black flex items-center justify-center text-white shadow-[4px_4px_0px_#000000] mx-auto mb-3">
+              <span className="font-cursive text-3xl font-black leading-none pb-0.5">M</span>
             </div>
-            <h1 className="font-cursive text-3xl font-bold text-slate-800">Musky.AI</h1>
-            <p className="text-xs font-medium text-slate-500 mt-1">Sovereign Industrial AI Workbench · Air-Gapped</p>
-            <div className="mt-2.5 inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full bg-indigo-50 border border-indigo-200/60 text-indigo-700 text-[11px] font-semibold">
-              <Shield className="w-3 h-3 text-indigo-600" />
-              <span>Role-Based Access Control (RBAC) Enforced</span>
+            <h1 className="font-cursive text-4xl font-bold text-black tracking-tight">Musky.AI</h1>
+            <p className="text-xs font-bold font-mono text-black mt-1 uppercase tracking-wider">SOVEREIGN INDUSTRIAL WORKBENCH · AIR-GAPPED</p>
+            <div className="mt-3 inline-flex items-center space-x-1.5 px-3 py-1 bg-[#ffe600] border-2 border-black text-black text-[11px] font-bold uppercase shadow-[2px_2px_0px_#000000]">
+              <Shield className="w-3.5 h-3.5 text-black" />
+              <span>RBAC CLEARANCE GATEWAY</span>
             </div>
           </div>
 
           {loginError && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+            <div className="mb-4 p-3 bg-[#ff3366] text-white border-2 border-black text-xs font-bold shadow-[3px_3px_0px_#000000] flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-white" />
               <span>{loginError}</span>
             </div>
           )}
@@ -1014,29 +1141,29 @@ export default function App() {
           {/* Sequential Credentials Form */}
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">
-                Staff Identity / Username
+              <label className="text-[11px] font-black text-black uppercase tracking-wider block mb-1 font-mono">
+                {'[>]'} OPERATOR ID / USERNAME
               </label>
               <input
                 type="text"
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
                 placeholder="e.g. admin, engineer_202, operator_101"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-medium"
+                className="w-full px-3.5 py-2.5 bg-white border-2 border-black text-xs text-black outline-none font-mono font-bold shadow-[3px_3px_0px_#000000] focus:bg-[#ffe600]/20 transition-all"
                 required
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">
-                Security Passcode
+              <label className="text-[11px] font-black text-black uppercase tracking-wider block mb-1 font-mono">
+                {'[>]'} SECURITY PASSCODE
               </label>
               <input
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="Enter authorized password"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-medium"
+                placeholder="ENTER AUTHORIZED PASSCODE"
+                className="w-full px-3.5 py-2.5 bg-white border-2 border-black text-xs text-black outline-none font-mono font-bold shadow-[3px_3px_0px_#000000] focus:bg-[#ffe600]/20 transition-all"
                 required
               />
             </div>
@@ -1044,51 +1171,51 @@ export default function App() {
             <button
               type="submit"
               disabled={loginLoading}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs shadow-md shadow-indigo-500/25 flex items-center justify-center space-x-2 transition-all cursor-pointer disabled:opacity-50"
+              className="w-full py-3 bg-black hover:bg-[#ffe600] text-white hover:text-black font-black text-xs uppercase tracking-wider border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_#000000] flex items-center justify-center space-x-2 transition-all cursor-pointer disabled:opacity-50"
             >
               {loginLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Verifying Clearance...</span>
+                  <Loader2 className="w-4 h-4 animate-spin text-black" />
+                  <span>VERIFYING CLEARANCE...</span>
                 </>
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  <span>Sign In to Sovereign Workbench</span>
+                  <span>AUTHENTICATE & ENTER</span>
                 </>
               )}
             </button>
           </form>
 
           {/* Quick Demo Credentials */}
-          <div className="mt-6 pt-5 border-t border-slate-200/70">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center mb-2.5">
-              Quick Switch Demo Roles
+          <div className="mt-6 pt-4 border-t-2 border-black">
+            <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider text-center mb-2.5">
+              PRESET DEMO CLEARANCES
             </div>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin('admin', 'admin123')}
-                className="p-2 rounded-lg bg-indigo-50/70 hover:bg-indigo-100 text-indigo-900 border border-indigo-200/60 text-center transition-colors cursor-pointer"
+                className="p-2 bg-white hover:bg-[#ffe600] text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 text-center transition-all cursor-pointer"
               >
-                <div className="text-[10px] font-bold">Admin</div>
-                <div className="text-[8px] text-indigo-500 font-mono">admin123</div>
+                <div className="text-[10px] font-black uppercase">Admin</div>
+                <div className="text-[9px] text-black font-mono font-bold">admin123</div>
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin('engineer_202', 'demo123')}
-                className="p-2 rounded-lg bg-sky-50/70 hover:bg-sky-100 text-sky-900 border border-sky-200/60 text-center transition-colors cursor-pointer"
+                className="p-2 bg-white hover:bg-[#00f0ff] text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 text-center transition-all cursor-pointer"
               >
-                <div className="text-[10px] font-bold">Engineer</div>
-                <div className="text-[8px] text-sky-500 font-mono">demo123</div>
+                <div className="text-[10px] font-black uppercase">Engineer</div>
+                <div className="text-[9px] text-black font-mono font-bold">demo123</div>
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickDemoLogin('operator_101', 'demo123')}
-                className="p-2 rounded-lg bg-emerald-50/70 hover:bg-emerald-100 text-emerald-900 border border-emerald-200/60 text-center transition-colors cursor-pointer"
+                className="p-2 bg-white hover:bg-[#00e676] text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 text-center transition-all cursor-pointer"
               >
-                <div className="text-[10px] font-bold">Operator</div>
-                <div className="text-[8px] text-emerald-500 font-mono">demo123</div>
+                <div className="text-[10px] font-black uppercase">Operator</div>
+                <div className="text-[9px] text-black font-mono font-bold">demo123</div>
               </button>
             </div>
           </div>
@@ -1110,63 +1237,74 @@ export default function App() {
         accept="image/*,.db,.sqlite,.sqlite3,.csv,.xlsx,.xls,.pdf,.doc,.docx,.txt,.md,.py,.sql,.json"
       />
 
-      {/* Sidebar Navigation */}
-      <nav className="w-[58px] glass-nav flex flex-col items-center py-4 z-20 space-y-1 shrink-0 border-r border-slate-200/60 shadow-xs">
-        <div className="mb-4 flex flex-col items-center cursor-pointer" onClick={() => setActiveTab('home')} title="Musky.AI Home">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
+      {/* Strict Brutalist Sidebar Navigation */}
+      <nav className="w-[66px] bg-white flex flex-col items-center py-4 z-20 space-y-2 shrink-0 border-r-[3px] border-black shadow-[4px_0px_0px_#000000]">
+        <div className="mb-2 flex flex-col items-center cursor-pointer group" onClick={() => setActiveTab('home')} title="Musky.AI Home">
+          <div className="w-11 h-11 bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 border-2 border-black flex items-center justify-center text-white shadow-[3px_3px_0px_#000000] group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-all">
             <span className="font-cursive text-2xl font-black leading-none pb-0.5">M</span>
           </div>
         </div>
 
-        {navItems.map(item => (
-          <button
-            key={item.key}
-            onClick={() => setActiveTab(item.key)}
-            className={`p-2.5 rounded-xl transition-all cursor-pointer relative group ${activeTab === item.key
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 scale-105'
-                : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100/60'
-              }`}
-            title={item.label}
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="absolute left-16 bg-slate-900 text-white text-[11px] font-medium px-2 py-1 rounded shadow-md whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
-              {item.label}
-            </span>
-          </button>
-        ))}
+        <div className="w-10 h-0.5 bg-black mb-1" />
 
-        <div className="mt-auto flex flex-col items-center space-y-2">
+        {navItems.map(item => {
+          const isActive = activeTab === item.key;
+          return (
+            <button
+              key={item.key}
+              onClick={() => setActiveTab(item.key)}
+              className={`w-11 h-11 border-2 border-black transition-all duration-100 cursor-pointer relative group flex items-center justify-center ${
+                isActive
+                  ? 'bg-black text-[#ffe600] shadow-[3px_3px_0px_#ffe600] translate-x-0.5'
+                  : 'bg-white text-black hover:bg-[#ffe600] hover:shadow-[3px_3px_0px_#000000]'
+              }`}
+              title={item.label}
+            >
+              <item.icon className="w-5 h-5" />
+
+              {/* Strict Brutalist Tooltip */}
+              <span className="absolute left-[72px] bg-black text-[#ffe600] text-[11px] font-mono font-bold px-3 py-1 border-2 border-black shadow-[3px_3px_0px_#000000] whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 uppercase tracking-wider">
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+
+        <div className="mt-auto flex flex-col items-center space-y-2 pt-2 border-t-2 border-black w-full">
           <button
             onClick={() => switchClearance(currentUser.role === 'ADMIN' ? 'GRADE_1' : currentUser.role === 'GRADE_1' ? 'GRADE_2' : currentUser.role === 'GRADE_2' ? 'GRADE_3' : 'ADMIN')}
-            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 text-indigo-700 flex items-center justify-center text-[10px] font-bold border border-slate-200"
-            title={`Active Role: ${currentUser.role}. Click to quick-cycle.`}
+            className="w-10 h-10 bg-[#00f0ff] hover:bg-[#ffe600] text-black flex items-center justify-center text-[11px] font-black font-mono border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer uppercase"
+            title={`Clearance: ${currentUser.role}. Click to cycle.`}
           >
             {currentUser.role.replace('GRADE_', 'G')}
           </button>
-          <div className={`w-2.5 h-2.5 rounded-full ${backendOnline ? 'bg-emerald-500 ring-4 ring-emerald-100' : 'bg-red-400 ring-4 ring-red-100'}`} title={backendOnline ? 'Sovereign Kernel Online' : 'Kernel Offline'} />
+          <div
+            className={`w-3 h-3 border border-black transition-all ${backendOnline ? 'bg-[#00e676]' : 'bg-[#ff3366]'}`}
+            title={backendOnline ? 'Sovereign Kernel Online' : 'Kernel Offline'}
+          />
         </div>
       </nav>
 
       {/* Main Workspace Area */}
-      <main className="flex-1 flex flex-col relative z-10 h-full overflow-hidden">
-        {/* Modern Top Header / Title Bar */}
-        <div className="h-11 w-full glass-header flex items-center justify-between px-4 border-b border-slate-200/50 shrink-0" style={{ WebkitAppRegion: 'drag' } as any}>
+      <main className="flex-1 flex flex-col relative z-10 h-full overflow-hidden bg-[#f5f4ef]">
+        {/* Strict Brutalist Header Bar */}
+        <div className="h-12 w-full bg-white flex items-center justify-between px-4 border-b-[3px] border-black shadow-[0px_3px_0px_#000000] shrink-0" style={{ WebkitAppRegion: 'drag' } as any}>
           <div className="flex items-center space-x-3">
             <span className="flex items-center space-x-2">
-              <span className="font-cursive text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-pink-500">Musky.AI</span>
-              <span className="text-[10px] text-slate-400 font-normal">/</span>
-              <span className="text-xs text-slate-600 font-semibold tracking-wide uppercase">{navItems.find(n => n.key === activeTab)?.label}</span>
+              <span className="font-cursive text-2xl font-black text-black tracking-wide pr-1">Musky.AI</span>
+              <span className="text-black font-black font-mono">/</span>
+              <span className="text-xs text-black font-black tracking-wider uppercase font-mono">{navItems.find(n => n.key === activeTab)?.label}</span>
             </span>
 
             {/* Role Clearance Pill & Selector */}
-            <div className="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50/80 border border-indigo-200/60" style={{ WebkitAppRegion: 'no-drag' } as any}>
-              <Shield className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="text-[10px] font-bold text-indigo-900 tracking-wide">{currentUser.role}</span>
-              <span className="text-[9px] text-indigo-400">({currentUser.username})</span>
+            <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-white border-2 border-black shadow-[2px_2px_0px_#000000]" style={{ WebkitAppRegion: 'no-drag' } as any}>
+              <Shield className="w-3.5 h-3.5 text-black" />
+              <span className="text-[10px] font-black font-mono text-black uppercase tracking-wider">{currentUser.role}</span>
+              <span className="text-[9px] font-mono text-slate-600">({currentUser.username})</span>
               <select
                 value={currentUser.role}
                 onChange={(e) => switchClearance(e.target.value)}
-                className="text-[10px] bg-transparent text-indigo-800 font-semibold outline-none cursor-pointer pl-1"
+                className="text-[10px] font-mono bg-white text-black font-bold outline-none cursor-pointer pl-1 border-l border-black ml-1"
                 title="Switch Authorization Clearance"
               >
                 <option value="ADMIN">ADMIN (Full Governance)</option>
@@ -1179,25 +1317,25 @@ export default function App() {
 
           <div className="flex items-center space-x-3" style={{ WebkitAppRegion: 'no-drag' } as any}>
             {backendOnline ? (
-              <span className="flex items-center space-x-1.5 text-emerald-600 text-[11px] font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/50">
-                <Wifi className="w-3 h-3" />
-                <span>Air-Gapped</span>
+              <span className="flex items-center space-x-1.5 text-black text-[10px] font-black font-mono bg-[#00e676] px-2.5 py-1 border border-black shadow-[2px_2px_0px_#000000] uppercase">
+                <Wifi className="w-3 h-3 text-black" />
+                <span>AIR-GAPPED NODE</span>
               </span>
             ) : (
-              <span className="flex items-center space-x-1 text-red-500 text-[11px] font-semibold">
+              <span className="flex items-center space-x-1 text-white text-[10px] font-black font-mono bg-[#ff3366] px-2.5 py-1 border border-black shadow-[2px_2px_0px_#000000] uppercase">
                 <WifiOff className="w-3 h-3" />
-                <span>Kernel Offline</span>
+                <span>OFFLINE</span>
               </span>
             )}
 
             {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+              className="flex items-center space-x-1 px-3 py-1 bg-white hover:bg-[#ff3366] text-black hover:text-white border-2 border-black text-xs font-black font-mono uppercase shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
               title="Sign Out / Lock Session"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Logout</span>
+              <span>LOCK</span>
             </button>
 
             <WindowControls />
@@ -1207,156 +1345,195 @@ export default function App() {
         {/* ══════════════════════════════════════════════════════════════
             1. HOME / OVERVIEW (Filled, Minimal & Aesthetic)
         ══════════════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════
+            1. HOME / OVERVIEW (Strict Brutalism Architecture)
+        ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'home' && (
           <div className="flex-1 flex flex-col p-6 overflow-y-auto max-w-6xl mx-auto w-full space-y-6">
-            {/* Hero Welcome Banner */}
-            <div className="glass-panel p-8 relative overflow-hidden rounded-3xl border border-white/60 bg-gradient-to-br from-white/95 via-indigo-50/40 to-pink-50/20 shadow-lg shadow-indigo-100/40 backdrop-blur-2xl">
-              {/* Subtle Ambient Glow */}
-              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-gradient-to-br from-indigo-300/20 to-pink-300/20 blur-3xl pointer-events-none" />
-              <div className="absolute bottom-0 left-1/3 -mb-12 w-64 h-64 rounded-full bg-sky-200/20 blur-2xl pointer-events-none" />
+            {/* Strict Brutal Hero Banner */}
+            <div className="bg-white p-8 relative overflow-hidden border-[3px] border-black shadow-[8px_8px_0px_#000000]">
+              {/* Industrial Hazard Corner Stripe */}
+              <div className="absolute top-0 right-0 w-32 h-6 hazard-stripe border-b-2 border-l-2 border-black" />
 
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="max-w-2xl space-y-3">
-                  <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-100/70 border border-indigo-200/50 text-indigo-700 text-xs font-semibold shadow-xs">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
-                    <span className="font-medium">SIH26117 · Air-Gapped Sovereign AI System</span>
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 bg-[#ffe600] border-2 border-black text-black text-xs font-black font-mono shadow-[3px_3px_0px_#000000] uppercase">
+                    <Sparkles className="w-3.5 h-3.5 text-black" />
+                    <span>SIH26117 · AIR-GAPPED SOVEREIGN AI SYSTEM</span>
                   </div>
 
                   <div className="space-y-1">
-                    <h1 className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight flex items-baseline gap-2.5 flex-wrap">
-                      <span>Welcome to</span>
-                      <span className="font-cursive text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 pr-1">
+                    <h1 className="text-3xl sm:text-4xl font-black text-black tracking-tight flex items-baseline gap-2.5 flex-wrap">
+                      <span className="font-mono uppercase">Welcome to</span>
+                      <span className="font-cursive text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 pr-1">
                         Musky.AI
                       </span>
                     </h1>
-                    <p className="text-sm font-medium text-indigo-950/70">
-                      Sovereign Industrial AI Workbench for On-Premise Industrial Engineering
+                    <p className="text-xs font-bold font-mono text-black uppercase tracking-wider bg-[#00f0ff] inline-block px-2 py-0.5 border border-black mt-1">
+                      HIGH-CRITICALITY REFINERY ENGINEERING & SCADA ACTUATOR CONTROL
                     </p>
                   </div>
 
-                  <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-xl">
-                    Zero cloud egress, on-premise execution engineered for high-criticality refining infrastructure. Powered by verifiable cryptographic audits, multimodal vision inspection, and role-governed policy sandboxing.
+                  <p className="text-xs sm:text-sm text-black font-medium leading-relaxed max-w-xl font-mono">
+                    Zero cloud egress on-premise execution engineered for high-criticality refining infrastructure. Powered by verifiable cryptographic audits, multimodal vision inspection, and role-governed policy sandboxing.
                   </p>
 
                   <div className="pt-2 flex flex-wrap items-center gap-3">
                     <button
                       onClick={() => setActiveTab('chat')}
-                      className="group px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-semibold flex items-center space-x-2 shadow-md shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                      className="px-5 py-2.5 bg-black hover:bg-[#ffe600] text-white hover:text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
                     >
-                      <MessageSquare className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
-                      <span>Start Sovereign Chat</span>
+                      <MessageSquare className="w-4 h-4" />
+                      <span>START SOVEREIGN CHAT</span>
                     </button>
                     <button
                       onClick={() => { setActiveTab('chat'); attachSampleDb(); }}
-                      className="px-4 py-2.5 rounded-2xl bg-white/90 hover:bg-white text-slate-700 hover:text-indigo-600 text-xs font-semibold flex items-center space-x-2 border border-slate-200/70 shadow-xs hover:border-indigo-300 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                      className="px-4 py-2.5 bg-white hover:bg-[#00f0ff] text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
                     >
-                      <Database className="w-4 h-4 text-indigo-600" />
-                      <span>Attach Industrial DB</span>
+                      <Database className="w-4 h-4" />
+                      <span>ATTACH INDUSTRIAL DB</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('ide')}
-                      className="px-4 py-2.5 rounded-2xl bg-white/90 hover:bg-white text-slate-700 hover:text-emerald-600 text-xs font-semibold flex items-center space-x-2 border border-slate-200/70 shadow-xs hover:border-emerald-300 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                      className="px-4 py-2.5 bg-white hover:bg-[#00e676] text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
                     >
-                      <Code2 className="w-4 h-4 text-emerald-600" />
-                      <span>Sovereign Studio</span>
+                      <Code2 className="w-4 h-4" />
+                      <span>SOVEREIGN STUDIO</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Right Status Badge in Hero */}
                 <div className="flex md:flex-col gap-3 shrink-0">
-                  <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-200/60 shadow-xs min-w-[170px] backdrop-blur-md">
-                    <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      <Shield className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Clearance Active</span>
+                  <div className="p-4 bg-white border-2 border-black shadow-[4px_4px_0px_#000000] min-w-[180px]">
+                    <div className="flex items-center space-x-2 text-[10px] font-black text-black font-mono uppercase tracking-wider mb-1">
+                      <Shield className="w-3.5 h-3.5 text-black" />
+                      <span>CLEARANCE LEVEL</span>
                     </div>
-                    <div className="text-base font-black text-slate-800">{currentUser.role}</div>
-                    <div className="text-[10px] text-slate-500 truncate max-w-[150px]">{currentUser.full_name}</div>
+                    <div className="text-lg font-black font-mono text-black uppercase">{currentUser.role}</div>
+                    <div className="text-[10px] font-mono font-bold text-slate-700 truncate max-w-[150px]">{currentUser.full_name}</div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-200/60 shadow-xs min-w-[170px] backdrop-blur-md">
-                    <div className="flex items-center space-x-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                      <span>Air-Gapped Node</span>
+                  <div className="p-4 bg-[#00e676] border-2 border-black shadow-[4px_4px_0px_#000000] min-w-[180px]">
+                    <div className="flex items-center space-x-2 text-[10px] font-black text-black font-mono uppercase tracking-wider mb-1">
+                      <div className="w-2.5 h-2.5 bg-black" />
+                      <span>AIR-GAPPED NODE</span>
                     </div>
-                    <div className="text-base font-black text-emerald-600">Zero Cloud Egress</div>
-                    <div className="text-[10px] text-slate-500">100% Local Inference</div>
+                    <div className="text-base font-black font-mono text-black uppercase">ZERO CLOUD EGRESS</div>
+                    <div className="text-[10px] font-mono font-bold text-black uppercase">100% LOCAL INFERENCE</div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Quick Metrics & Hardware Meter */}
-            <div className="grid grid-cols-4 gap-4">
-              <div className="glass-panel p-4">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Clearance Level</div>
-                <div className="text-lg font-black text-slate-800">{currentUser.role}</div>
-                <div className="text-[10px] text-slate-500 mt-1">{currentUser.full_name}</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white p-4 border-[2.5px] border-black shadow-[4px_4px_0px_#000000]">
+                <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider mb-1 flex items-center justify-between">
+                  <span>CLEARANCE</span>
+                  <Shield className="w-3.5 h-3.5 text-black" />
+                </div>
+                <div className="text-xl font-black font-mono text-black uppercase">{currentUser.role}</div>
+                <div className="text-[11px] font-mono text-slate-700 mt-0.5 truncate">{currentUser.full_name}</div>
               </div>
 
-              <div className="glass-panel p-4">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">VRAM Allocation</div>
-                <div className="text-lg font-black text-slate-800">{systemStatus?.vram_used_mb || 1200} / {systemStatus?.vram_budget_mb || 7168} MB</div>
-                <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
-                  <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${Math.min(100, ((systemStatus?.vram_used_mb || 1200) / (systemStatus?.vram_budget_mb || 7168)) * 100)}%` }} />
+              <div className="bg-white p-4 border-[2.5px] border-black shadow-[4px_4px_0px_#000000]">
+                <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider mb-1 flex items-center justify-between">
+                  <span className="flex items-center space-x-1">
+                    <span>VRAM ALLOCATION</span>
+                  </span>
+                  <div className="flex items-center space-x-1">
+                    <span className="inline-flex items-center px-1.5 py-0.5 bg-[#00e676] border border-black text-[9px] font-mono font-black text-black leading-none">
+                      <svg className="w-2.5 h-2.5 mr-1 inline-block" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7.4 3C4.4 3 2 5.4 2 8.4v7.2C2 18.6 4.4 21 7.4 21h9.2c3 0 5.4-2.4 5.4-5.4V8.4C22 5.4 19.6 3 16.6 3H7.4zm0 2h9.2c1.9 0 3.4 1.5 3.4 3.4v7.2c0 1.9-1.5 3.4-3.4 3.4H7.4C5.5 19 4 17.5 4 15.6V8.4C4 6.5 5.5 5 7.4 5zM9 8v8l7-4-7-4z"/>
+                      </svg>
+                      RTX GPU
+                    </span>
+                    <HardDrive className="w-3.5 h-3.5 text-black" />
+                  </div>
+                </div>
+                <div className="text-xl font-black text-black font-mono">
+                  {systemStatus?.vram_used_mb || 1200} <span className="text-xs text-black font-normal">/ {systemStatus?.vram_budget_mb || 7168} MB</span>
+                </div>
+                <div className="w-full bg-slate-200 h-2 mt-2 border border-black">
+                  <div className="bg-black h-full transition-all" style={{ width: `${Math.min(100, ((systemStatus?.vram_used_mb || 1200) / (systemStatus?.vram_budget_mb || 7168)) * 100)}%` }} />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[9px] font-mono text-black">
+                  <span className="font-bold">DRIVER: CUDA 12.4</span>
+                  <span className="bg-[#ffe600] px-1 border border-black font-black">LOCAL ON-PREM</span>
                 </div>
               </div>
 
-              <div className="glass-panel p-4">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Policy Engine</div>
-                <div className="text-lg font-black text-emerald-600 flex items-center">
-                  <CheckCircle2 className="w-4 h-4 mr-1" />
-                  <span>DEFAULT-DENY</span>
+              <div className="bg-[#ffe600] p-4 border-[2.5px] border-black shadow-[4px_4px_0px_#000000]">
+                <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider mb-1 flex items-center justify-between">
+                  <span>POLICY ENGINE</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-black" />
                 </div>
-                <div className="text-[10px] text-slate-500 mt-1">Scary Command Protection Active</div>
+                <div className="text-xl font-black font-mono text-black uppercase">DEFAULT-DENY</div>
+                <div className="text-[11px] font-mono text-black font-bold mt-0.5 uppercase">SCADA GATE ACTIVE</div>
               </div>
 
-              <div className="glass-panel p-4">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Audit Ledger</div>
-                <div className="text-lg font-black text-indigo-700 font-mono">SHA-256</div>
-                <div className="text-[10px] text-slate-500 mt-1">Cryptographically Chained</div>
+              <div className="bg-white p-4 border-[2.5px] border-black shadow-[4px_4px_0px_#000000]">
+                <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider mb-1 flex items-center justify-between">
+                  <span>AUDIT LEDGER</span>
+                  <ClipboardList className="w-3.5 h-3.5 text-black" />
+                </div>
+                <div className="text-xl font-black text-black font-mono">SHA-256</div>
+                <div className="text-[11px] font-mono text-slate-700 mt-0.5 uppercase">CRYPTOGRAPHIC CHAIN</div>
               </div>
             </div>
 
             {/* Presentation Showcase Cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div
                 onClick={() => { setActiveTab('chat'); attachSampleDb(); }}
-                className="glass-panel p-5 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer group"
+                className="bg-white p-5 border-[2.5px] border-black shadow-[5px_5px_0px_#000000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0px_#000000] transition-all cursor-pointer group"
               >
-                <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <div className="w-11 h-11 bg-[#ffe600] border-2 border-black text-black flex items-center justify-center mb-3.5 shadow-[2px_2px_0px_#000000]">
                   <Database className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-slate-800 mb-1">Inspect Equipment Database</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Attach and query <code className="text-indigo-600">industrial_demo.db</code> directly in chat for remaining life and corrosion rate analysis.
+                <h3 className="text-sm font-black text-black mb-1 font-mono uppercase">INSPECT REFINERY DATABASE</h3>
+                <p className="text-xs text-black font-mono leading-relaxed">
+                  Query industrial SQLite database directly in chat for API 510 remaining life and ASME corrosion statistics.
                 </p>
+                <div className="mt-3.5 pt-3 border-t-2 border-black flex items-center text-xs font-black font-mono text-black space-x-1 uppercase group-hover:translate-x-1 transition-transform">
+                  <span>LAUNCH DB QUERY</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
               </div>
 
               <div
-                onClick={() => { setActiveTab('chat'); fileInputRef.current?.click(); }}
-                className="glass-panel p-5 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer group"
+                onClick={() => { setActiveTab('chat'); attachDemoPidBlueprint(); }}
+                className="bg-white p-5 border-[2.5px] border-black shadow-[5px_5px_0px_#000000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0px_#000000] transition-all cursor-pointer group"
               >
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <div className="w-11 h-11 bg-[#00f0ff] border-2 border-black text-black flex items-center justify-center mb-3.5 shadow-[2px_2px_0px_#000000]">
                   <Image className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-slate-800 mb-1">Multimodal Vision Inspection</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Upload P&ID diagrams, equipment photos, or pipe junctions for local vision analysis and safety code verification.
+                <h3 className="text-sm font-black text-black mb-1 font-mono uppercase">MULTIMODAL P&ID BLUEPRINT</h3>
+                <p className="text-xs text-black font-mono leading-relaxed">
+                  Analyze high-res P&ID diagrams with automated ISA 5.1 tag extraction and ASME B31.3 wall defect flags.
                 </p>
+                <div className="mt-3.5 pt-3 border-t-2 border-black flex items-center text-xs font-black font-mono text-black space-x-1 uppercase group-hover:translate-x-1 transition-transform">
+                  <span>INSPECT P&ID BLUEPRINT</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
               </div>
 
               <div
                 onClick={() => setActiveTab('machinery')}
-                className="glass-panel p-5 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer group"
+                className="bg-white p-5 border-[2.5px] border-black shadow-[5px_5px_0px_#000000] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[7px_7px_0px_#000000] transition-all cursor-pointer group"
               >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <div className="w-11 h-11 bg-[#00e676] border-2 border-black text-black flex items-center justify-center mb-3.5 shadow-[2px_2px_0px_#000000]">
                   <Gauge className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-bold text-slate-800 mb-1">Refinery Machinery Twin</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Real-time 3D telemetry visualization, top spotlighting, and SCADA emergency actuator trips.
+                <h3 className="text-sm font-black text-black mb-1 font-mono uppercase">REFINERY MACHINERY TWIN</h3>
+                <p className="text-xs text-black font-mono leading-relaxed">
+                  3D SCADA telemetry twin with real-time ISO 10816 diagnostics, 200 Hz trip replay, and SIL-3 interlocks.
                 </p>
+                <div className="mt-3.5 pt-3 border-t-2 border-black flex items-center text-xs font-black font-mono text-black space-x-1 uppercase group-hover:translate-x-1 transition-transform">
+                  <span>LAUNCH 3D TWIN</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </div>
               </div>
             </div>
           </div>
@@ -1365,25 +1542,25 @@ export default function App() {
 
 
         {/* ══════════════════════════════════════════════════════════════
-            2. CHAT WITH ATTACHMENTS & POLICY PROTECTION
+            2. CHAT WITH ATTACHMENTS & POLICY PROTECTION (Strict Brutalism)
         ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'chat' && (
           <div className="flex-1 flex overflow-hidden">
-            {/* Chat List Sidebar */}
-            <div className="w-64 glass-nav flex flex-col border-r border-slate-200/40 overflow-hidden shrink-0">
-              <div className="p-3.5 flex items-center justify-between border-b border-slate-200/30">
+            {/* Strict Brutal Chat List Sidebar */}
+            <div className="w-64 bg-white flex flex-col border-r-[3px] border-black shadow-[4px_0px_0px_#000000] overflow-hidden shrink-0">
+              <div className="p-3 flex items-center justify-between border-b-2 border-black bg-[#f5f4ef]">
                 <div className="flex items-center space-x-2">
-                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Previous Chats</span>
-                  <span className="text-[10px] bg-slate-200/60 text-slate-500 rounded-full px-1.5 py-0.2 font-mono">{chats.length}</span>
+                  <span className="text-[11px] font-black font-mono text-black uppercase tracking-wider">SESSION LOGS</span>
+                  <span className="text-[10px] bg-black text-[#ffe600] font-mono px-1.5 py-0.2 font-bold">{chats.length}</span>
                 </div>
-                <button onClick={newChat} className="flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-50 border border-indigo-200/60 transition-all shadow-2xs cursor-pointer" title="Start a New Conversation">
+                <button onClick={newChat} className="flex items-center space-x-1 px-2.5 py-1 bg-white hover:bg-[#ffe600] text-xs font-black font-mono text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer" title="Start a New Conversation">
                   <Plus className="w-3.5 h-3.5" />
-                  <span>New</span>
+                  <span>NEW</span>
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
                 {chats.length === 0 ? (
-                  <p className="text-[11px] text-slate-400 italic p-3 text-center">No previous chats.</p>
+                  <p className="text-[11px] font-mono text-slate-500 uppercase p-3 text-center">[ NO STORED CHATS ]</p>
                 ) : chats.map((c: any) => {
                   const id = c.chat_id || c[0];
                   const title = c.title || c[1] || 'New Chat';
@@ -1393,14 +1570,14 @@ export default function App() {
                     <button
                       key={id}
                       onClick={() => openChat(id)}
-                      className={`w-full text-left p-2.5 rounded-xl text-xs transition-all flex flex-col cursor-pointer ${isActive
-                          ? 'bg-indigo-100/90 text-indigo-800 font-semibold shadow-2xs border border-indigo-200/50'
-                          : 'text-slate-600 hover:bg-white/70 hover:text-slate-900 border border-transparent'
+                      className={`w-full text-left p-2.5 text-xs font-mono transition-all flex flex-col cursor-pointer border-2 border-black ${isActive
+                          ? 'bg-[#ffe600] text-black font-black shadow-[3px_3px_0px_#000000] translate-x-0.5'
+                          : 'bg-white text-black hover:bg-[#f5f4ef] hover:shadow-[2px_2px_0px_#000000]'
                         }`}
                     >
-                      <span className="truncate w-full font-medium">{title}</span>
+                      <span className="truncate w-full font-bold uppercase">{title}</span>
                       {date && (
-                        <span className={`text-[9px] mt-0.5 ${isActive ? 'text-indigo-500' : 'text-slate-400'}`}>
+                        <span className="text-[9px] mt-0.5 text-slate-700 font-bold">
                           {new Date(date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                         </span>
                       )}
@@ -1415,19 +1592,19 @@ export default function App() {
               <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-5">
                 {messages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] p-4 text-sm leading-relaxed whitespace-pre-wrap ${msg.sender === 'user' ? 'chat-bubble-user' :
-                        msg.sender === 'system' ? 'bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl shadow-sm text-xs' :
+                    <div className={`max-w-[80%] p-4 text-sm leading-relaxed whitespace-pre-wrap font-mono ${msg.sender === 'user' ? 'chat-bubble-user' :
+                        msg.sender === 'system' ? 'bg-[#ffe600] border-2 border-black text-black shadow-[4px_4px_0px_#000000] text-xs font-bold' :
                           'chat-bubble-ai'
                       }`}>
                       {msg.attachment && (
-                        <div className="mb-2 p-2 rounded-lg bg-white/70 border border-indigo-200/60 flex items-center space-x-2 text-xs text-indigo-900 font-medium">
-                          {msg.attachment.type === 'image' ? <Image className="w-4 h-4 text-indigo-600" /> : <Database className="w-4 h-4 text-sky-600" />}
-                          <span className="truncate">{msg.attachment.name}</span>
-                          <span className="text-[10px] text-indigo-400 uppercase font-mono">[{msg.attachment.type}]</span>
+                        <div className="mb-2 p-2 bg-[#00f0ff] border-2 border-black flex items-center space-x-2 text-xs text-black font-black shadow-[2px_2px_0px_#000000]">
+                          {msg.attachment.type === 'image' ? <Image className="w-4 h-4 text-black" /> : <Database className="w-4 h-4 text-black" />}
+                          <span className="truncate uppercase font-mono">{msg.attachment.name}</span>
+                          <span className="text-[10px] bg-black text-white px-1 uppercase font-mono">[{msg.attachment.type}]</span>
                         </div>
                       )}
                       {msg.text}
-                      {msg.timestamp && <div className={`text-[9px] mt-2 ${msg.sender === 'user' ? 'text-indigo-400' : 'text-slate-400'}`}>{msg.timestamp}</div>}
+                      {msg.timestamp && <div className={`text-[9px] mt-2 font-mono font-bold ${msg.sender === 'user' ? 'text-[#00f0ff]' : 'text-slate-600'}`}>[{msg.timestamp}]</div>}
                     </div>
                   </div>
                 ))}
@@ -1438,7 +1615,7 @@ export default function App() {
                       <div className="ai-thinking">
                         <div className="ai-thinking-orb"></div>
                         <div className="flex flex-col">
-                          <span className="ai-thinking-text">Thinking & Resolving Intent...</span>
+                          <span className="ai-thinking-text">[ INFERENCE IN PROGRESS - ZERO CLOUD EGRESS ]</span>
                           <div className="ai-thinking-dots mt-2">
                             <span></span><span></span><span></span>
                           </div>
@@ -1453,34 +1630,74 @@ export default function App() {
               <div className="flex-none p-2 mb-2">
                 {/* Active Attachment Chip */}
                 {currentAttachment && (
-                  <div className="max-w-3xl mx-auto mb-2 flex items-center justify-between p-2 px-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900 shadow-xs">
+                  <div className="max-w-3xl mx-auto mb-2 flex items-center justify-between p-2 px-3 bg-[#00f0ff] border-2 border-black text-xs text-black font-mono font-bold shadow-[3px_3px_0px_#000000]">
                     <div className="flex items-center space-x-2">
-                      {currentAttachment.type === 'image' ? <Image className="w-4 h-4 text-indigo-600" /> : <Database className="w-4 h-4 text-sky-600" />}
-                      <span className="font-semibold">{currentAttachment.name}</span>
-                      <span className="text-[10px] text-indigo-500 font-mono">({currentAttachment.type})</span>
+                      {currentAttachment.type === 'image' ? <Image className="w-4 h-4 text-black" /> : <Database className="w-4 h-4 text-black" />}
+                      <span className="font-black uppercase">{currentAttachment.name}</span>
+                      <span className="text-[10px] bg-black text-white px-1 font-mono">({currentAttachment.type})</span>
                     </div>
-                    <button onClick={() => setCurrentAttachment(null)} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-600">
+                    <button onClick={() => setCurrentAttachment(null)} className="p-1 hover:bg-black hover:text-white border border-black cursor-pointer">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
+
+                {/* Quick Demo Showcase Bar */}
+                <div className="max-w-3xl mx-auto mb-2 flex items-center flex-wrap gap-2 px-1">
+                  <span className="text-[10px] font-black font-mono text-black uppercase tracking-wider mr-1 flex items-center bg-[#ffe600] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#000000]">
+                    <Sparkles className="w-3 h-3 text-black mr-1" /> SHOWCASE FILES:
+                  </span>
+                  <button
+                    onClick={attachDemoPidBlueprint}
+                    className="px-2.5 py-1 bg-white hover:bg-[#ffe600] text-black text-[11px] font-mono font-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all flex items-center space-x-1 cursor-pointer uppercase"
+                    title="Load P&ID Blueprint of Crude Distillation Overhead Train"
+                  >
+                    <Image className="w-3 h-3 text-black" />
+                    <span>P&ID BLUEPRINT (CDU-301)</span>
+                  </button>
+                  <button
+                    onClick={attachDemoNdtSurvey}
+                    className="px-2.5 py-1 bg-white hover:bg-[#00f0ff] text-black text-[11px] font-mono font-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all flex items-center space-x-1 cursor-pointer uppercase"
+                    title="Load Ultrasonic Thickness NDT Survey (ASME B31G)"
+                  >
+                    <Table className="w-3 h-3 text-black" />
+                    <span>NDT SURVEY (ASME B31G)</span>
+                  </button>
+                  <button
+                    onClick={attachDemoVibrationStream}
+                    className="px-2.5 py-1 bg-white hover:bg-[#ff3366] hover:text-white text-black text-[11px] font-mono font-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all flex items-center space-x-1 cursor-pointer uppercase"
+                    title="Load High-Speed Vibration FFT Telemetry (ISO 10816)"
+                  >
+                    <Activity className="w-3 h-3" />
+                    <span>VIBRATION STREAM (ISO 10816)</span>
+                  </button>
+                  <button
+                    onClick={attachDemoIncidentReport}
+                    className="px-2.5 py-1 bg-white hover:bg-[#ffe600] text-black text-[11px] font-mono font-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all flex items-center space-x-1 cursor-pointer uppercase"
+                    title="Load OSHA 1910 PSM Investigation Dossier"
+                  >
+                    <FileText className="w-3 h-3 text-black" />
+                    <span>OSHA PSM DOSSIER</span>
+                  </button>
+                  <button
+                    onClick={attachSampleDb}
+                    className="px-2.5 py-1 bg-white hover:bg-[#00e676] text-black text-[11px] font-mono font-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all flex items-center space-x-1 cursor-pointer uppercase"
+                    title="Load Industrial SQLite Database"
+                  >
+                    <Database className="w-3 h-3 text-black" />
+                    <span>REFINERY DB</span>
+                  </button>
+                </div>
 
                 <div className="premium-input-container p-2 px-4 flex items-end relative max-w-3xl mx-auto">
                   {/* Attach Buttons */}
                   <div className="flex items-center space-x-1 mr-2 mb-2">
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                      title="Attach Image or Document"
+                      className="p-2 bg-white hover:bg-[#ffe600] border-2 border-black text-black shadow-[2px_2px_0px_#000000] transition-colors cursor-pointer"
+                      title="Attach Any Local File"
                     >
                       <Paperclip className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={attachSampleDb}
-                      className="p-2 rounded-xl text-slate-500 hover:text-sky-600 hover:bg-sky-50 transition-colors"
-                      title="Attach Sample Industrial Database (industrial_demo.db)"
-                    >
-                      <Database className="w-4 h-4" />
                     </button>
                   </div>
 
@@ -1804,131 +2021,385 @@ export default function App() {
         {/* ══════════════════════════════════════════════════════════════
             5. PRESENTATION DATABASE & ANALYTICS EXPLORER
         ══════════════════════════════════════════════════════════════ */}
-        {activeTab === 'database' && (
-          <div className="flex-1 flex flex-col p-6 overflow-y-auto max-w-6xl mx-auto w-full space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-black text-slate-800 flex items-center space-x-2">
-                  <Database className="w-5 h-5 text-indigo-600" />
-                  <span>Refinery Industrial Presentation Database (<code className="text-indigo-600 font-mono">industrial_demo.db</code>)</span>
-                </h1>
-                <p className="text-xs text-slate-500 mt-1">
-                  Query operational equipment, inspection records, corrosion metrics, and active plant maintenance orders.
-                </p>
-              </div>
-              <button onClick={() => { fetchDbSchema(); fetchDbAnalytics(); }} className="premium-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 cursor-pointer">
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh DB</span>
-              </button>
-            </div>
+        {activeTab === 'database' && (() => {
+          // Pre-set safe analytical query templates
+          const presetQueries = [
+            { label: '🔥 High-Risk Equipment (API 510/570)', sql: "SELECT tag, equipment_type, unit, status, criticality, operating_pressure, metallurgy FROM equipment WHERE criticality = 'CRITICAL' ORDER BY operating_pressure DESC;" },
+            { label: '⚠️ Accelerated Corrosion (>0.2 mm/yr)', sql: "SELECT i.inspection_id, e.tag, e.unit, i.inspection_type, i.corrosion_rate_mm_year, i.remaining_life_years, i.governing_code, i.status FROM inspections i JOIN equipment e ON i.equipment_id = e.equipment_id WHERE i.corrosion_rate_mm_year > 0.2 ORDER BY i.corrosion_rate_mm_year DESC;" },
+            { label: '🚨 Open Critical Work Orders', sql: "SELECT w.wo_number, e.tag, e.unit, emp.name AS technician, w.priority, w.category, w.due_date, w.description, w.status FROM work_orders w JOIN equipment e ON w.equipment_id = e.equipment_id LEFT JOIN employees emp ON w.assigned_to = emp.employee_id WHERE w.priority = 'CRITICAL' AND w.status != 'CLOSED';" },
+            { label: '🏭 Active Plant Sectors & Capacity', sql: "SELECT unit_code, unit_name, refinery_zone, capacity_bpsd, operating_license, lead_engineer FROM plant_units ORDER BY capacity_bpsd DESC;" },
+            { label: '🧪 Critical Chemical Inventory', sql: "SELECT chemical_name, cas_number, unit, storage_tank, quantity_metric_tons, reorder_threshold_tons, hazard_classification FROM chemical_inventory ORDER BY quantity_metric_tons DESC;" },
+            { label: '🛡️ Safety Incidents & Near Misses', sql: "SELECT incident_code, unit, incident_date, severity, incident_type, description, corrective_action, status FROM safety_incidents ORDER BY incident_date DESC;" },
+          ];
 
-            {/* Analytics Summary Banner */}
-            {dbAnalytics && (
-              <div className="grid grid-cols-4 gap-4">
-                <div className="glass-panel p-4">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Monitored Equipment</div>
-                  <div className="text-xl font-black text-slate-800 mt-1">{dbAnalytics.total_equipment} Units</div>
-                  <div className="text-[10px] text-emerald-600 font-semibold mt-1">Operational: {dbAnalytics.equipment_status?.OPERATIONAL || 0}</div>
-                </div>
-                <div className="glass-panel p-4">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Avg Corrosion Rate</div>
-                  <div className="text-xl font-black text-amber-600 mt-1">{dbAnalytics.avg_corrosion_rate} mm/yr</div>
-                  <div className="text-[10px] text-slate-500 mt-1">Benchmark API 570 Standard</div>
-                </div>
-                <div className="glass-panel p-4">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Critical Work Orders</div>
-                  <div className="text-xl font-black text-red-600 mt-1">{dbAnalytics.critical_work_orders} Orders</div>
-                  <div className="text-[10px] text-slate-500 mt-1">High Consequence Tag</div>
-                </div>
-                <div className="glass-panel p-4">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">Min Remaining Life</div>
-                  <div className="text-xl font-black text-indigo-600 mt-1">{dbAnalytics.min_remaining_life_years} Years</div>
-                  <div className="text-[10px] text-slate-500 mt-1">Safety Clearance Required</div>
-                </div>
-              </div>
-            )}
+          // Filter rows client-side if dbSearchQuery is set
+          const filteredRows = dbRows.filter(row => {
+            if (!dbSearchQuery.trim()) return true;
+            const q = dbSearchQuery.toLowerCase();
+            return Object.values(row).some(v => String(v).toLowerCase().includes(q));
+          });
 
-            {/* Table Tabs & SQL Query Runner */}
-            <div className="glass-panel p-4 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-200/60 pb-3">
+          return (
+            <div className="flex-1 flex flex-col p-6 overflow-y-auto max-w-7xl mx-auto w-full space-y-5">
+              {/* Header */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 glass-panel p-4 bg-gradient-to-r from-white/95 via-indigo-50/40 to-slate-50 border border-slate-200/80 rounded-2xl shadow-xs">
+                <div>
+                  <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-1">
+                    <Database className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>SQL Presentation Engine (SQLite 3.42)</span>
+                  </div>
+                  <h1 className="text-xl font-black text-slate-800 tracking-tight flex items-center space-x-2">
+                    <span>Industrial Database Explorer & Analytics</span>
+                    <span className="text-xs font-mono font-normal text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                      data/demo_db/industrial_demo.db
+                    </span>
+                  </h1>
+                </div>
+
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-bold text-slate-600">Database Tables:</span>
-                  <div className="flex space-x-1">
-                    {dbTables.map(t => (
-                      <button
-                        key={t}
-                        onClick={() => queryTable(t)}
-                        className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${dbActiveTable === t ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  <button
+                    onClick={exportDbToCsv}
+                    disabled={dbRows.length === 0}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center space-x-1.5 shadow-2xs cursor-pointer transition-all disabled:opacity-40"
+                    title="Export currently loaded query rows to CSV"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>CSV</span>
+                  </button>
+                  <button
+                    onClick={exportDbToJson}
+                    disabled={dbRows.length === 0}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center space-x-1.5 shadow-2xs cursor-pointer transition-all disabled:opacity-40"
+                    title="Export currently loaded query rows to JSON"
+                  >
+                    <FileCode className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>JSON</span>
+                  </button>
+                  <button
+                    onClick={() => { fetchDbSchema(); fetchDbAnalytics(); }}
+                    className="premium-btn px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${dbLoading ? 'animate-spin' : ''}`} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Analytics Summary Banner (6 Interactive KPI Cards) */}
+              {dbAnalytics && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <div
+                    onClick={() => executeCustomQuery("SELECT * FROM equipment WHERE status = 'OPERATIONAL';")}
+                    className="glass-panel p-3.5 bg-white/90 border-slate-200/80 hover:border-indigo-400 cursor-pointer transition-all shadow-2xs hover:shadow-xs group"
+                  >
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Monitored Assets</div>
+                    <div className="text-xl font-black text-slate-800 mt-0.5 group-hover:text-indigo-600">{dbAnalytics.total_equipment} Units</div>
+                    <div className="text-[10px] text-emerald-600 font-semibold mt-0.5 flex items-center space-x-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>{dbAnalytics.equipment_status?.OPERATIONAL || 0} Operational</span>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => executeCustomQuery("SELECT * FROM plant_units;")}
+                    className="glass-panel p-3.5 bg-white/90 border-slate-200/80 hover:border-indigo-400 cursor-pointer transition-all shadow-2xs hover:shadow-xs group"
+                  >
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Plant Units</div>
+                    <div className="text-xl font-black text-indigo-600 mt-0.5 group-hover:text-indigo-700">{dbAnalytics.total_units} Sectors</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Crude, FCCU, HGU, SRU</div>
+                  </div>
+
+                  <div
+                    onClick={() => executeCustomQuery("SELECT * FROM inspections ORDER BY corrosion_rate_mm_year DESC;")}
+                    className="glass-panel p-3.5 bg-white/90 border-slate-200/80 hover:border-amber-400 cursor-pointer transition-all shadow-2xs hover:shadow-xs group"
+                  >
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Avg Corrosion</div>
+                    <div className="text-xl font-black text-amber-600 mt-0.5 group-hover:text-amber-700">{dbAnalytics.avg_corrosion_rate} mm/yr</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">API 570 Code Benchmark</div>
+                  </div>
+
+                  <div
+                    onClick={() => executeCustomQuery("SELECT * FROM inspections ORDER BY remaining_life_years ASC;")}
+                    className="glass-panel p-3.5 bg-white/90 border-slate-200/80 hover:border-purple-400 cursor-pointer transition-all shadow-2xs hover:shadow-xs group"
+                  >
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Min Life Span</div>
+                    <div className="text-xl font-black text-purple-600 mt-0.5 group-hover:text-purple-700">{dbAnalytics.min_remaining_life_years} Yrs</div>
+                    <div className="text-[10px] text-amber-600 font-semibold mt-0.5">Impeller Wear Alert</div>
+                  </div>
+
+                  <div
+                    onClick={() => executeCustomQuery("SELECT * FROM work_orders WHERE priority = 'CRITICAL';")}
+                    className="glass-panel p-3.5 bg-white/90 border-slate-200/80 hover:border-red-400 cursor-pointer transition-all shadow-2xs hover:shadow-xs group"
+                  >
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Critical Work Orders</div>
+                    <div className="text-xl font-black text-red-600 mt-0.5 group-hover:text-red-700">{dbAnalytics.critical_work_orders} Orders</div>
+                    <div className="text-[10px] text-red-500 font-semibold mt-0.5">Immediate Attention</div>
+                  </div>
+
+                  <div
+                    onClick={() => executeCustomQuery("SELECT * FROM chemical_inventory;")}
+                    className="glass-panel p-3.5 bg-white/90 border-slate-200/80 hover:border-sky-400 cursor-pointer transition-all shadow-2xs hover:shadow-xs group"
+                  >
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chemical Storage</div>
+                    <div className="text-xl font-black text-sky-600 mt-0.5 group-hover:text-sky-700">{dbAnalytics.total_chemical_tons} Tons</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">{dbAnalytics.total_chemicals} Monitored Fluids</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Table Switcher Tabs */}
+              <div className="glass-panel p-4 bg-white shadow-xs space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex items-center space-x-2">
+                    <Table className="w-4 h-4 text-indigo-600" />
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Refinery Tables ({dbTables.length}):</span>
+                  </div>
+
+                  {/* Table Selection Pills */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {dbTables.map(t => {
+                      const isActive = dbActiveTable === t;
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => {
+                            setDbSearchQuery('');
+                            queryTable(t);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-2xs ${
+                            isActive
+                              ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-200'
+                              : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/80'
                           }`}
+                        >
+                          <span>{t}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Pre-set Safe Queries Quick Chips */}
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-bold text-slate-500 flex items-center space-x-1">
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    <span>Quick Analytical Presets (One-Click Insight):</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {presetQueries.map((pq, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setDbQueryText(pq.sql);
+                          setDbSearchQuery('');
+                          executeCustomQuery(pq.sql);
+                        }}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-indigo-50/80 hover:bg-indigo-100/90 text-indigo-700 border border-indigo-200/80 transition-all cursor-pointer shadow-2xs text-left"
                       >
-                        {t}
+                        {pq.label}
                       </button>
                     ))}
                   </div>
                 </div>
-              </div>
 
-              {/* SQL Query Bar */}
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  disabled={currentUser.role === 'GRADE_1'}
-                  value={dbQueryText}
-                  onChange={(e) => setDbQueryText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') executeCustomQuery(); }}
-                  className="flex-1 px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder={
-                    currentUser.role === 'GRADE_1'
-                      ? '🔒 Custom SQL execution restricted to Grade 2+ (Browsing pre-filtered tables permitted)'
-                      : 'Enter SELECT query...'
-                  }
-                />
-                <button
-                  onClick={() => executeCustomQuery()}
-                  disabled={dbLoading || currentUser.role === 'GRADE_1'}
-                  className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs"
-                >
-                  {dbLoading ? 'Querying...' : 'Execute SQL'}
-                </button>
-              </div>
+                {/* SQL Query Bar & Search Filter */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="flex items-center space-x-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        disabled={currentUser.role === 'GRADE_1'}
+                        value={dbQueryText}
+                        onChange={(e) => setDbQueryText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') executeCustomQuery(); }}
+                        className="w-full pl-3 pr-24 py-2.5 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:bg-white outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        placeholder={
+                          currentUser.role === 'GRADE_1'
+                            ? '🔒 Custom SQL execution restricted to Grade 2+ (Browsing pre-filtered tables permitted)'
+                            : 'Enter SELECT SQL query...'
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setDbQueryText(`SELECT * FROM ${dbActiveTable} LIMIT 25;`)}
+                        className="absolute right-2 top-2 px-2 py-0.5 text-[10px] font-semibold text-slate-500 hover:text-indigo-600 bg-white border border-slate-200 rounded cursor-pointer"
+                        title="Reset to default table query"
+                      >
+                        Reset
+                      </button>
+                    </div>
 
-              {dbError && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg flex items-center space-x-2">
-                  <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" />
-                  <span>{dbError}</span>
+                    <button
+                      onClick={() => executeCustomQuery()}
+                      disabled={dbLoading || currentUser.role === 'GRADE_1'}
+                      className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-xs transition-all flex items-center space-x-1.5 shrink-0"
+                    >
+                      {dbLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                      <span>Execute Query</span>
+                    </button>
+                  </div>
+
+                  {/* Fast In-Table Text Search Filter Bar */}
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <div className="relative flex-1 max-w-sm">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        value={dbSearchQuery}
+                        onChange={(e) => setDbSearchQuery(e.target.value)}
+                        placeholder={`Filter loaded records (${filteredRows.length}/${dbRows.length})...`}
+                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-indigo-400 transition-all"
+                      />
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      Showing <strong>{filteredRows.length}</strong> of <strong>{dbRows.length}</strong> records &bull; Click row to inspect details
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {/* Results Table */}
-              <div className="overflow-x-auto rounded-lg border border-slate-200 max-h-96">
-                <table className="w-full text-left text-xs border-collapse bg-white">
-                  <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold sticky top-0">
-                    <tr>
-                      {dbColumns.map((c, i) => (
-                        <th key={i} className="p-2.5 px-3 font-mono">{c}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-mono text-[11px] text-slate-700">
-                    {dbRows.length === 0 ? (
+                {dbError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center space-x-2">
+                    <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" />
+                    <span className="font-semibold">{dbError}</span>
+                  </div>
+                )}
+
+                {/* Results Table with hover & clickable inspection */}
+                <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[440px] shadow-2xs">
+                  <table className="w-full text-left text-xs border-collapse bg-white">
+                    <thead className="bg-slate-50/95 border-b border-slate-200 text-slate-700 font-bold sticky top-0 backdrop-blur-xs z-10">
                       <tr>
-                        <td colSpan={dbColumns.length || 1} className="p-4 text-center text-slate-400 italic">No records returned.</td>
+                        <th className="p-2.5 px-3 w-10 text-center text-slate-400 text-[10px]">#</th>
+                        {dbColumns.map((c, i) => (
+                          <th key={i} className="p-2.5 px-3 font-mono text-[11px] text-slate-800 whitespace-nowrap">
+                            {c}
+                          </th>
+                        ))}
                       </tr>
-                    ) : (
-                      dbRows.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-indigo-50/40">
-                          {dbColumns.map((col, ci) => (
-                            <td key={ci} className="p-2 px-3 whitespace-nowrap">{String(row[col] !== null && row[col] !== undefined ? row[col] : '')}</td>
-                          ))}
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono text-[11px] text-slate-700">
+                      {filteredRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={(dbColumns.length || 1) + 1} className="p-8 text-center text-slate-400 italic">
+                            {dbLoading ? 'Loading records...' : 'No records match current query / filter.'}
+                          </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        filteredRows.map((row, idx) => (
+                          <tr
+                            key={idx}
+                            onClick={() => setDbSelectedRow(row)}
+                            className="hover:bg-indigo-50/50 cursor-pointer transition-colors"
+                          >
+                            <td className="p-2 px-3 text-center text-slate-400 text-[10px] select-none font-sans">
+                              {idx + 1}
+                            </td>
+                            {dbColumns.map((col, ci) => {
+                              const val = row[col];
+                              const isNull = val === null || val === undefined;
+                              const valStr = isNull ? 'NULL' : String(val);
+                              // Highlight critical keywords
+                              const isCritical = ['CRITICAL', 'WARNING', 'FAIL'].includes(valStr);
+                              const isPass = ['PASS', 'OPERATIONAL', 'CLOSED', 'RESOLVED'].includes(valStr);
+
+                              return (
+                                <td key={ci} className="p-2 px-3 whitespace-nowrap">
+                                  {isCritical ? (
+                                    <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold text-[10px]">
+                                      {valStr}
+                                    </span>
+                                  ) : isPass ? (
+                                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">
+                                      {valStr}
+                                    </span>
+                                  ) : isNull ? (
+                                    <span className="text-slate-300 italic">NULL</span>
+                                  ) : (
+                                    <span>{valStr}</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              {/* Record Detail Modal / Drawer */}
+              <AnimatePresence>
+                {dbSelectedRow && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+                    onClick={() => setDbSelectedRow(null)}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.95, y: 10 }}
+                      animate={{ scale: 1, y: 0 }}
+                      exit={{ scale: 0.95, y: 10 }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden"
+                    >
+                      <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                        <div className="flex items-center space-x-2">
+                          <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                          <h3 className="text-sm font-bold text-slate-800">Record Field Inspector</h3>
+                          <span className="text-[10px] font-mono bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
+                            {dbActiveTable}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setDbSelectedRow(null)}
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="p-5 overflow-y-auto space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          {Object.entries(dbSelectedRow).map(([key, val]) => (
+                            <div key={key} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                              <div className="text-[10px] font-mono font-bold text-slate-400 uppercase">{key}</div>
+                              <div className="text-xs font-semibold text-slate-800 mt-0.5 break-words font-sans">
+                                {val !== null && val !== undefined ? String(val) : <em className="text-slate-300">null</em>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(JSON.stringify(dbSelectedRow, null, 2));
+                            setDbSelectedRow(null);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 flex items-center space-x-1 cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy JSON</span>
+                        </button>
+                        <button
+                          onClick={() => setDbSelectedRow(null)}
+                          className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 cursor-pointer shadow-2xs"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
-        )}
+          );
+        })()}
+
 
         {/* ══════════════════════════════════════════════════════════════
             6. EMPLOYEES & RBAC CLEARANCE REGISTRY
@@ -2093,69 +2564,107 @@ export default function App() {
         {/* ══════════════════════════════════════════════════════════════
             REFINERY MACHINERY SIMULATION & CENTRAL POLICY CONTROL
         ══════════════════════════════════════════════════════════════ */}
-        {activeTab === 'machinery' && (
-          <div className="flex-1 flex flex-col p-6 overflow-y-auto max-w-7xl mx-auto w-full space-y-6">
-            {/* Top Machinery Banner */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 bg-gradient-to-r from-white/95 via-indigo-50/50 to-slate-50 border border-slate-200/80 rounded-3xl shadow-sm">
-              <div>
-                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-2">
-                  <Gauge className="w-3.5 h-3.5 text-indigo-600 animate-spin-slow" />
-                  <span>Refinery SCADA & IoT Digital Twin</span>
-                </div>
-                <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center space-x-2">
-                  <span>Industrial Machinery & AI Safety Control</span>
-                </h1>
-                <p className="text-xs text-slate-500 max-w-2xl mt-1 leading-relaxed">
-                  Interactive real-time 3D physics & SCADA telemetry simulation. Tell the Sovereign AI to stop, start, or trip heavy refinery machinery. Central Policy Engine validates your clearance grade before any physical actuator responds.
-                </p>
-              </div>
+        {/* ══════════════════════════════════════════════════════════════
+            REFINERY MACHINERY SIMULATION & CENTRAL POLICY CONTROL
+        ══════════════════════════════════════════════════════════════ */}
+        {activeTab === 'machinery' && (() => {
+          const selectedMachine = machineryList.find(m => m.id === selectedMachineId) || machineryList[0] || {
+            id: 'PUMP_301A',
+            name: 'Crude Feed Charge Pump (CDU-301A)',
+            unit: 'Crude Distillation Unit',
+            status: 'RUNNING',
+            rpm: 2950,
+            vibration_mms: 1.4,
+            pressure_bar: 18.2,
+            temperature_c: 68.4,
+            min_clearance: 'GRADE_1',
+            emergency_stop_role: 'GRADE_2'
+          };
+          const isSelectedRunning = selectedMachine.status === 'RUNNING';
+          const isSelectedThrottled = selectedMachine.status === 'THROTTLED';
 
-              {/* Clearance Pill */}
-              <div className="flex items-center space-x-3 bg-white/90 p-3 rounded-2xl border border-slate-200 shadow-xs">
-                <Shield className="w-5 h-5 text-indigo-600" />
+          return (
+            <div className="flex-1 flex flex-col p-5 overflow-y-auto max-w-[1600px] mx-auto w-full space-y-4">
+              {/* Top Machinery Banner */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 glass-panel p-4 bg-gradient-to-r from-white/95 via-indigo-50/50 to-slate-50 border border-slate-200/80 rounded-2xl shadow-xs">
                 <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Your Clearance Level</div>
-                  <div className="text-sm font-black text-slate-800">{currentUser.role}</div>
-                  <div className="text-[10px] text-indigo-600 font-medium">{currentUser.username}</div>
+                  <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-1">
+                    <Gauge className="w-3.5 h-3.5 text-indigo-600 animate-spin-slow" />
+                    <span>Refinery SCADA & IoT Digital Twin</span>
+                  </div>
+                  <h1 className="text-xl font-black text-slate-800 tracking-tight flex items-center space-x-2">
+                    <span>Industrial Machinery & AI Safety Control</span>
+                  </h1>
                 </div>
-              </div>
-            </div>
 
-            {/* AI Natural Language Machinery Control Bar */}
-            <div className="glass-panel p-5 rounded-2xl border border-indigo-200/60 shadow-md shadow-indigo-100/30">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2 text-xs font-bold text-slate-700">
-                  <Bot className="w-4 h-4 text-indigo-600" />
-                  <span>Voice / Natural Language AI Machinery Actuator</span>
-                </div>
-                <span className="text-[11px] text-slate-500">
-                  Try saying: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-mono">"AI stop crude pump 301"</code> or <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-mono">"emergency shutdown compressor"</code>
-                </span>
-              </div>
+                {/* Right Actions & Clearance */}
+                <div className="flex items-center space-x-2.5">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const r = await fetch(`${API}/api/machinery/reports/export`);
+                        const d = await r.json();
+                        const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Sovereign_SCADA_Shift_Report_${new Date().toISOString().slice(0, 10)}.json`;
+                        a.click();
+                      } catch (e: any) {
+                        alert(`Export error: ${e.message}`);
+                      }
+                    }}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/90 hover:bg-indigo-50 text-indigo-700 border border-slate-200 shadow-2xs text-xs font-bold transition-all cursor-pointer"
+                    title="Export OSHA 1910 / API 510 Shift Handover Dossier"
+                  >
+                    <Download className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Export Shift Report</span>
+                  </button>
 
-              <form onSubmit={handleVoiceAiCommand} className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={machineVoiceCommand}
-                    onChange={(e) => setMachineVoiceCommand(e.target.value)}
-                    placeholder="Type or simulate voice: e.g., 'Emergency trip pump 301' or 'machine ruko' or 'throttle compressor'..."
-                    className="w-full px-4 py-3 text-xs rounded-xl bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none pr-28 transition-all"
-                  />
-                  <div className="absolute right-3 top-2.5 flex items-center space-x-1.5 text-slate-400">
-                    <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                    <span className="text-[10px] font-semibold text-slate-500">SCADA Bridge</span>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm('⚠️ CONFIRM PLANT EMERGENCY SHUTDOWN (ESD)? All refinery machinery will be tripped fail-closed.')) return;
+                      try {
+                        const r = await fetch(`${API}/api/machinery/emergency-fleet-trip`, {
+                          method: 'POST',
+                          headers: authHeaders({ 'Content-Type': 'application/json' })
+                        });
+                        const d = await r.json();
+                        if (d.success) {
+                          setMachineActionBanner({
+                            type: 'blocked',
+                            title: '🚨 PLANT-WIDE ESD TRIPPED',
+                            description: d.message
+                          });
+                          fetchMachinery();
+                        } else {
+                          setMachineActionBanner({
+                            type: 'blocked',
+                            title: 'Central Policy Blocked Plant ESD',
+                            description: d.message || 'Requires Grade 3 or Admin clearance.'
+                          });
+                        }
+                      } catch (e: any) {
+                        alert(`ESD Trip Error: ${e.message}`);
+                      }
+                    }}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-xs text-xs font-bold transition-all cursor-pointer"
+                    title="Plant-Wide Emergency Shutdown (Requires Grade 3 or Admin)"
+                  >
+                    <Octagon className="w-3.5 h-3.5 text-white" />
+                    <span>PLANT ESD (Trip All)</span>
+                  </button>
+
+                  {/* Clearance Pill */}
+                  <div className="flex items-center space-x-3 bg-white/90 px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                    <Shield className="w-4 h-4 text-indigo-600" />
+                    <div>
+                      <div className="text-[9px] uppercase font-bold text-slate-400">Clearance Grade</div>
+                      <div className="text-xs font-black text-slate-800">{currentUser.role}</div>
+                    </div>
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  disabled={machineAiLoading}
-                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold flex items-center space-x-2 shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {machineAiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-white" />}
-                  <span>Execute Command</span>
-                </button>
-              </form>
+              </div>
 
               {/* Central Policy Action Banner */}
               <AnimatePresence>
@@ -2164,7 +2673,7 @@ export default function App() {
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    className={`mt-4 p-4 rounded-xl border flex items-start space-x-3 text-xs leading-relaxed ${
+                    className={`p-3.5 rounded-xl border flex items-start space-x-3 text-xs leading-relaxed ${
                       machineActionBanner.type === 'success'
                         ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900 shadow-sm'
                         : 'bg-red-50/90 border-red-300 text-red-900 shadow-sm'
@@ -2176,10 +2685,10 @@ export default function App() {
                       <ShieldAlert className="w-5 h-5 text-red-600 shrink-0 mt-0.5 animate-bounce" />
                     )}
                     <div className="flex-1">
-                      <div className="font-bold text-sm tracking-tight mb-1 flex items-center space-x-2">
+                      <div className="font-bold text-sm tracking-tight mb-0.5 flex items-center space-x-2">
                         <span>{machineActionBanner.title}</span>
                         {machineActionBanner.type === 'blocked' && (
-                          <span className="text-[10px] bg-red-200 text-red-800 px-2 py-0.5 rounded-full uppercase font-black">
+                          <span className="text-[10px] bg-red-200 text-red-800 px-2 py-0.2 rounded-full uppercase font-black">
                             FAIL-CLOSED PROTECTION
                           </span>
                         )}
@@ -2195,152 +2704,717 @@ export default function App() {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
 
-            {/* Simulated Refinery Machinery Grid - 4 Distinct 3D Digital Twin Machines */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-              {machineryList.map((m) => {
-                const isRunning = m.status === 'RUNNING';
-                const isThrottled = m.status === 'THROTTLED';
-                const isStopped = m.status === 'STOPPED';
+              {/* ═══ 2-COLUMN BALANCED INDUSTRIAL LAYOUT: LEFT (UNITS + PERMANENT SCADA AI CHAT) & RIGHT (3D DIGITAL TWIN + CONTROLS) ═══ */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                {/* ─── LEFT COLUMN: MACHINE SELECTOR + PERMANENT SCADA AI CHAT (5 COLS) ─── */}
+                <div className="lg:col-span-5 space-y-4">
+                  {/* 1. Machine Units Quick Selector (Accordion / Compact Cards) */}
+                  <div className="glass-panel p-3.5 rounded-2xl border border-slate-200/80 bg-white shadow-2xs space-y-2.5">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+                        <Cpu className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Refinery Units ({machineryList.length})</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">Click unit to sync twin & chat</span>
+                    </div>
 
-                return (
-                  <div
-                    key={m.id}
-                    onClick={() => setSelectedMachineId(m.id)}
-                    className={`glass-panel p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                      selectedMachineId === m.id
-                        ? 'border-indigo-500 ring-2 ring-indigo-200 shadow-xl'
-                        : 'border-slate-200/80 hover:border-indigo-300 hover:shadow-md'
-                    }`}
-                  >
-                    {/* Header */}
-                    <div>
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
-                              {m.id}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-medium truncate max-w-[110px]">{m.unit}</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {machineryList.map((m) => {
+                        const isRunning = m.status === 'RUNNING';
+                        const isThrottled = m.status === 'THROTTLED';
+                        const isSelected = selectedMachineId === m.id;
+
+                        return (
+                          <div
+                            key={m.id}
+                            onClick={() => setSelectedMachineId(m.id)}
+                            className={`p-2.5 rounded-xl border transition-all cursor-pointer relative overflow-hidden ${
+                              isSelected
+                                ? 'border-indigo-600 ring-2 ring-indigo-200 bg-indigo-50/40 shadow-xs'
+                                : 'border-slate-200 bg-slate-50/50 hover:bg-white hover:border-indigo-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                                isSelected ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 border border-slate-200'
+                              }`}>
+                                {m.id}
+                              </span>
+                              <span className={`w-2 h-2 rounded-full ${
+                                isRunning ? 'bg-emerald-500 animate-pulse' : isThrottled ? 'bg-amber-500' : 'bg-red-500'
+                              }`} />
+                            </div>
+                            <h4 className="text-[11px] font-bold text-slate-800 truncate mt-1">{m.name}</h4>
+                            <div className="flex justify-between items-center text-[9px] font-mono text-slate-500 mt-1">
+                              <span>{m.rpm} RPM</span>
+                              <span className="font-bold text-amber-600">{m.temperature_c}°C</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[8px] font-mono text-slate-400 mt-0.5 pt-0.5 border-t border-slate-100">
+                              <span className="text-indigo-600 font-bold">H: {m.health_index || 92}%</span>
+                              <span>{m.vibration_mms} mm/s</span>
+                            </div>
                           </div>
-                          <h3 className="text-xs font-bold text-slate-800 mt-1 leading-snug truncate" title={m.name}>{m.name}</h3>
-                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                        {/* Status Pill */}
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center space-x-1 shadow-2xs shrink-0 ${
-                          isRunning
-                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                            : isThrottled
-                            ? 'bg-amber-100 text-amber-700 border border-amber-300'
-                            : 'bg-red-100 text-red-700 border border-red-300'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            isRunning ? 'bg-emerald-500 animate-ping' : isThrottled ? 'bg-amber-500' : 'bg-red-500'
-                          }`} />
-                          <span>{m.status}</span>
-                        </span>
+                  {/* 2. Permanent SCADA AI Chat & Actuator on Left Side */}
+                  <div className="glass-panel p-4 rounded-2xl border border-slate-200 bg-white shadow-md flex flex-col h-[490px]">
+                    {/* Chat Header */}
+                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                          <Bot className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                            <span>SCADA AI Actuator</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          </div>
+                          <span className="text-[10px] text-slate-400">Target: {selectedMachine.id}</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] uppercase font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                        {currentUser.role}
+                      </span>
+                    </div>
+
+                    {/* Chat Message Stream */}
+                    <div className="flex-1 overflow-y-auto py-3 space-y-2.5 text-xs pr-1 font-sans">
+                      {machineChatHistory.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex ${item.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[88%] p-2.5 rounded-2xl leading-relaxed whitespace-pre-wrap ${
+                              item.sender === 'user'
+                                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-br-xs shadow-xs'
+                                : item.status === 'blocked'
+                                ? 'bg-red-50 text-red-900 border border-red-200 rounded-bl-xs'
+                                : item.status === 'granted'
+                                ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 rounded-bl-xs'
+                                : 'bg-slate-100 text-slate-700 rounded-bl-xs'
+                            }`}
+                          >
+                            <div className="text-[11px]">{item.text}</div>
+                            <div className={`text-[9px] mt-1 flex items-center justify-between ${item.sender === 'user' ? 'text-indigo-200' : 'text-slate-400'}`}>
+                              <span>{item.timestamp}</span>
+                              {item.status && (
+                                <span className={`font-mono text-[8px] uppercase px-1 rounded font-bold ${
+                                  item.status === 'granted' ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800'
+                                }`}>
+                                  {item.status}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Quick Action Chips */}
+                    <div className="py-1.5 flex items-center space-x-1.5 overflow-x-auto text-[10px] border-t border-slate-100">
+                      <span className="text-slate-400 font-bold shrink-0">Quick:</span>
+                      <button
+                        type="button"
+                        onClick={() => setMachineVoiceCommand(`emergency trip ${selectedMachine.id}`)}
+                        className="px-2 py-0.5 rounded-full bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 shrink-0 cursor-pointer font-semibold"
+                      >
+                        ⚡ Trip
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMachineVoiceCommand(`speed badhao ${selectedMachine.id} by 20%`)}
+                        className="px-2 py-0.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shrink-0 cursor-pointer font-semibold"
+                      >
+                        🚀 Speed +20%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMachineVoiceCommand(`purge relief valve on ${selectedMachine.id}`)}
+                        className="px-2 py-0.5 rounded-full bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 shrink-0 cursor-pointer font-semibold"
+                      >
+                        💨 Purge
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMachineVoiceCommand(`lube circulate on ${selectedMachine.id}`)}
+                        className="px-2 py-0.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 shrink-0 cursor-pointer font-semibold"
+                      >
+                        🛢️ Lube Boost
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMachineVoiceCommand(`cooling flush ${selectedMachine.id}`)}
+                        className="px-2 py-0.5 rounded-full bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 shrink-0 cursor-pointer font-semibold"
+                      >
+                        ❄️ Cool Flush
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMachineVoiceCommand(`machine ruko ${selectedMachine.id}`)}
+                        className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shrink-0 cursor-pointer font-semibold"
+                      >
+                        🛑 Ruko
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMachineVoiceCommand(`chalu karo ${selectedMachine.id}`)}
+                        className="px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0 cursor-pointer font-semibold"
+                      >
+                        🟢 Chalu
+                      </button>
+                    </div>
+
+                    {/* Chat Input Form */}
+                    <form onSubmit={handleVoiceAiCommand} className="pt-2 border-t border-slate-100 flex items-center space-x-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={machineVoiceCommand}
+                          onChange={(e) => setMachineVoiceCommand(e.target.value)}
+                          placeholder={`Ask AI to control ${selectedMachine.id}...`}
+                          className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white outline-none pr-8 transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMachineVoiceCommand(`AI stop ${selectedMachine.id}`)}
+                          className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-indigo-600 cursor-pointer"
+                          title="Auto-fill stop prompt"
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                        </button>
                       </div>
 
-                      {/* WebGL Three.js Real-Time 3D Digital Twin Canvas */}
-                      <div className="my-2 rounded-xl bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white relative overflow-hidden shadow-2xl border border-slate-800/80 flex flex-col items-center justify-center">
-                        <ThreeMachineCanvas machineId={m.id} status={m.status} rpm={m.rpm} />
+                      <button
+                        type="submit"
+                        disabled={machineAiLoading || !machineVoiceCommand.trim()}
+                        className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold flex items-center space-x-1 shadow-sm transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {machineAiLoading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Send className="w-3.5 h-3.5" />
+                        )}
+                        <span>Send</span>
+                      </button>
+                    </form>
+                  </div>
 
-                        {/* Real-Time SCADA Telemetry Overlay */}
-                        <div className="w-full bg-slate-950/80 backdrop-blur-xs px-3 py-1.5 border-t border-slate-800/80 grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono text-[10px]">
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-400">RPM:</span>
-                            <span className={`font-bold ${isRunning ? 'text-emerald-400' : 'text-slate-500'}`}>
-                              {m.rpm}
-                            </span>
-                          </div>
+                  {/* Policy Info Card */}
+                  <div className="glass-panel p-3 bg-gradient-to-br from-indigo-50/40 via-white to-sky-50/30 border border-indigo-200/60 rounded-xl flex items-start space-x-2.5 text-xs text-slate-600">
+                    <Shield className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-[11px]">Deterministic Safety Gate</h4>
+                      <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                        Actions undergo central RBAC clearance validation before triggering physical 3D twin actuators.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-400">Vib:</span>
-                            <span className={`font-bold ${m.vibration_mms > 2.5 ? 'text-amber-400' : 'text-slate-300'}`}>
-                              {m.vibration_mms} mm/s
-                            </span>
-                          </div>
+                {/* ─── RIGHT COLUMN: 3D DIGITAL TWIN & REAL-TIME PARAMETERS (7 COLS) ─── */}
+                <div className="lg:col-span-7 space-y-4">
+                  {/* 1. Large 3D Digital Twin Canvas Card */}
+                  <div className="glass-panel p-4 rounded-3xl border border-slate-200 bg-white shadow-lg overflow-hidden flex flex-col">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md">
+                            {selectedMachine.id}
+                          </span>
+                          <span className="text-xs font-bold text-slate-800">{selectedMachine.name}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 mt-0.5 block">{selectedMachine.unit} · Drag mouse to orbit 3D view</span>
+                      </div>
 
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-400">Pres:</span>
-                            <span className="text-sky-300 font-bold">{m.pressure_bar} Bar</span>
-                          </div>
+                      <div className="flex items-center space-x-2">
+                        {/* ISO Diagnostics Action */}
+                        <button
+                          onClick={async () => {
+                            setIsDiagnosticsLoading(true);
+                            setActiveMachineModal('diagnostics');
+                            try {
+                              const r = await fetch(`${API}/api/machinery/diagnostics/${selectedMachine.id}`);
+                              const d = await r.json();
+                              setMachineDiagnosticsData(d);
+                            } catch (e: any) {
+                              alert(`Diagnostics error: ${e.message}`);
+                            } finally {
+                              setIsDiagnosticsLoading(false);
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold flex items-center space-x-1 cursor-pointer transition-all shadow-2xs"
+                          title="View ISO 10816-3 FFT Spectrum & RUL Analytics"
+                        >
+                          <Activity className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>ISO Diagnostics</span>
+                        </button>
 
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-400">Temp:</span>
-                            <span className="text-amber-300 font-bold">{m.temperature_c} °C</span>
-                          </div>
+                        {/* Trip Replay Action */}
+                        <button
+                          onClick={async () => {
+                            setActiveMachineModal('replay');
+                            try {
+                              const r = await fetch(`${API}/api/machinery/trip-replay/${selectedMachine.id}`);
+                              const d = await r.json();
+                              setMachineReplayData(d);
+                            } catch (e: any) {
+                              alert(`Replay error: ${e.message}`);
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold flex items-center space-x-1 cursor-pointer transition-all shadow-2xs"
+                          title="Open 200 Hz Blackbox Trip Replay & Forensics"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Trip Replay</span>
+                        </button>
+
+                        {/* CMMS Work Order Action */}
+                        <button
+                          onClick={() => {
+                            setWorkOrderDescription(`Mechanical vibration inspection and shaft alignment verification for ${selectedMachine.name} (${selectedMachine.unit}).`);
+                            setWorkOrderResult(null);
+                            setActiveMachineModal('work_order');
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold flex items-center space-x-1 cursor-pointer transition-all shadow-2xs"
+                          title="Generate SAP/Maximo CMMS Work Order"
+                        >
+                          <Wrench className="w-3.5 h-3.5 text-amber-600" />
+                          <span>CMMS Order</span>
+                        </button>
+
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center space-x-1.5 ${
+                          isSelectedRunning ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' :
+                          isSelectedThrottled ? 'bg-amber-100 text-amber-700 border border-amber-300' :
+                          'bg-red-100 text-red-700 border border-red-300'
+                        }`}>
+                          <span className={`w-2 h-2 rounded-full ${
+                            isSelectedRunning ? 'bg-emerald-500 animate-ping' : isSelectedThrottled ? 'bg-amber-500' : 'bg-red-500'
+                          }`} />
+                          <span>{selectedMachine.status}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* WebGL 3D Canvas Box (Expanded full viewport height) */}
+                    <div className="my-3 rounded-2xl bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white relative overflow-hidden shadow-2xl border border-slate-800/90 flex flex-col items-center justify-center">
+                      <ThreeMachineCanvas machineId={selectedMachine.id} status={selectedMachine.status} rpm={selectedMachine.rpm} height={360} />
+
+                      {/* Live SCADA Telemetry Bar (6 Essential Sensor Channels) */}
+                      <div className="w-full bg-slate-950/85 backdrop-blur-md px-4 py-2 border-t border-slate-800/80 grid grid-cols-3 md:grid-cols-6 gap-2 font-mono text-[11px]">
+                        <div>
+                          <span className="text-slate-400 text-[10px] block">RPM SHAFT</span>
+                          <span className={`font-bold ${isSelectedRunning ? 'text-emerald-400' : 'text-slate-500'}`}>{selectedMachine.rpm}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block">VIBRATION</span>
+                          <span className={`font-bold ${selectedMachine.vibration_mms > 2.5 ? 'text-amber-400' : 'text-slate-300'}`}>{selectedMachine.vibration_mms} mm/s</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block">CASING PRES</span>
+                          <span className="text-sky-300 font-bold">{selectedMachine.pressure_bar} Bar</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block">CORE TEMP</span>
+                          <span className="text-amber-300 font-bold">{selectedMachine.temperature_c} °C</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block">LUBE OIL</span>
+                          <span className="text-indigo-300 font-bold">{selectedMachine.lube_oil_pressure_bar || 3.8} Bar</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] block">HEALTH / GAS</span>
+                          <span className="text-emerald-300 font-bold">{selectedMachine.health_index || 92}% <span className="text-slate-400 font-normal text-[9px]">({selectedMachine.gas_detector_ppm || 1.2} ppm)</span></span>
                         </div>
                       </div>
                     </div>
 
-                    {/* RBAC Governance Requirements Footer */}
-                    <div className="mt-2 pt-3 border-t border-slate-200/60 flex flex-col space-y-2 text-xs">
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-slate-400">Required:</span>
-                        <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">
-                          {m.min_clearance}
+                    {/* Interactive Parameter Control Dashboard */}
+                    <div className="mt-2 p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+                          <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Live Parameter Tuning & SCADA Actuators</span>
                         </span>
-                        <span className="text-slate-400">E-Stop:</span>
-                        <span className="font-semibold text-red-600">
-                          {m.emergency_stop_role}+
-                        </span>
+                        <span className="text-[10px] text-slate-400">Requires Grade 2+ Clearance</span>
                       </div>
 
-                      {/* Interactive Control Buttons */}
-                      <div className="flex items-center justify-end space-x-1.5 pt-1">
-                        {isRunning ? (
+                      {/* Interactive Sliders Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {/* RPM Slider */}
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200/70 shadow-2xs">
+                          <div className="flex justify-between items-center text-[10px] font-semibold mb-1">
+                            <span className="text-slate-500">Shaft RPM</span>
+                            <span className="font-mono font-bold text-indigo-600">{selectedMachine.rpm} RPM</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max={selectedMachine.id.includes('COMPRESSOR') ? 14000 : 5000}
+                            step="50"
+                            value={selectedMachine.rpm}
+                            onChange={(e) => {
+                              const newRpm = parseInt(e.target.value);
+                              handleMachineControl(selectedMachine.id, 'SET_PARAM', `Set ${selectedMachine.id} RPM to ${newRpm}`, { rpm: newRpm });
+                            }}
+                            className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg appearance-none"
+                          />
+                        </div>
+
+                        {/* Pressure Slider */}
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200/70 shadow-2xs">
+                          <div className="flex justify-between items-center text-[10px] font-semibold mb-1">
+                            <span className="text-slate-500">Casing Pressure</span>
+                            <span className="font-mono font-bold text-sky-600">{selectedMachine.pressure_bar} Bar</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max={selectedMachine.id.includes('COMPRESSOR') ? 200 : 50}
+                            step="0.5"
+                            value={selectedMachine.pressure_bar}
+                            onChange={(e) => {
+                              const newP = parseFloat(e.target.value);
+                              handleMachineControl(selectedMachine.id, 'SET_PARAM', `Adjust ${selectedMachine.id} pressure to ${newP} Bar`, { pressure_bar: newP });
+                            }}
+                            className="w-full accent-sky-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg appearance-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Multi-Parameter Actuator Buttons */}
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {isSelectedRunning ? (
                           <>
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleMachineControl(m.id, 'THROTTLE', `Manual Throttle Command for ${m.name}`); }}
-                              className="px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-semibold text-[11px] transition-all cursor-pointer"
-                              title="Reduce flow rate by 50%"
+                              onClick={() => handleMachineControl(selectedMachine.id, 'BOOST', `Overdrive Boost (+25% RPM) on ${selectedMachine.name}`)}
+                              className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center space-x-1.5 transition-all cursor-pointer shadow-2xs"
+                              title="Increase RPM and flow by 25%"
                             >
-                              Throttle
+                              <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Speed Boost (+25%)</span>
                             </button>
+
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleMachineControl(m.id, 'STOP', `Emergency Halt Command for ${m.name}`); }}
-                              className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] flex items-center space-x-1 shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                              title="Trigger Emergency Machine Stop via AI Policy"
+                              onClick={() => handleMachineControl(selectedMachine.id, 'THROTTLE', `Throttle 50% on ${selectedMachine.name}`)}
+                              className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold text-xs flex items-center space-x-1.5 transition-all cursor-pointer shadow-2xs"
+                              title="Reduce flow and speed by 50%"
+                            >
+                              <TrendingDown className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Throttle (50%)</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleMachineControl(selectedMachine.id, 'PURGE_VALVE', `Emergency Pressure Relief & Vent for ${selectedMachine.name}`)}
+                              className="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-bold text-xs flex items-center space-x-1.5 transition-all cursor-pointer shadow-2xs"
+                              title="Vent pressure safely through relief line"
+                            >
+                              <Wind className="w-3.5 h-3.5 text-sky-600" />
+                              <span>Purge Relief</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleMachineControl(selectedMachine.id, 'LUBE_CIRCULATE', `Auxiliary Lube Circulation Pump for ${selectedMachine.name}`)}
+                              className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center space-x-1.5 transition-all cursor-pointer shadow-2xs"
+                              title="Boost lubrication oil header pressure and bearing cooling"
+                            >
+                              <Activity className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Lube Boost (+1.2 Bar)</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleMachineControl(selectedMachine.id, 'COOLING_FLUSH', `Jacket Cooling Flush for ${selectedMachine.name}`)}
+                              className="px-3 py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 font-bold text-xs flex items-center space-x-1.5 transition-all cursor-pointer shadow-2xs"
+                              title="Engage secondary heat exchanger flush to suppress core temperature"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5 text-cyan-600" />
+                              <span>Coolant Flush (-14°C)</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleMachineControl(selectedMachine.id, 'STOP', `Emergency Halt for ${selectedMachine.name}`)}
+                              className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer"
+                              title="Trip machine instantly via policy engine"
                             >
                               <Octagon className="w-3.5 h-3.5" />
-                              <span>AI STOP</span>
+                              <span>Emergency Trip (Stop)</span>
                             </button>
                           </>
                         ) : (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleMachineControl(m.id, 'START', `Machine Start Command for ${m.name}`); }}
-                            className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center space-x-1 shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                          >
-                            <Power className="w-3.5 h-3.5" />
-                            <span>AI START</span>
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleMachineControl(selectedMachine.id, 'START', `Startup command for ${selectedMachine.name}`)}
+                              className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer"
+                            >
+                              <Power className="w-3.5 h-3.5" />
+                              <span>Start Machine</span>
+                            </button>
+                            <span className="text-[11px] text-slate-400 italic">Machine halted. Click Start or use AI prompt to spin up.</span>
+                          </>
                         )}
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Architecture Explainer Box for Presentation */}
-            <div className="glass-panel p-5 bg-gradient-to-r from-indigo-50/50 via-white to-sky-50/40 border border-indigo-200/60 rounded-2xl flex items-start space-x-4">
-              <Shield className="w-6 h-6 text-indigo-600 shrink-0 mt-1" />
-              <div className="text-xs text-slate-600 space-y-1">
-                <h4 className="font-bold text-slate-800 text-sm">
-                  Why This Matters for Hackathon & Industrial Safety Demonstration:
-                </h4>
-                <p>
-                  1. <strong>Deterministic Safeguards</strong>: If a low-clearance user (e.g. <code>GRADE_1</code> plant operator or untrusted account) asks the AI to <em>"trip all refinery compressors"</em> or <em>"shut down distillation"</em>, the Central Policy Engine <strong>fails closed and blocks the actuator</strong> before any SCADA pulse is sent.
-                </p>
-                <p>
-                  2. <strong>Immediate Audible & Visual Feedback</strong>: When an authorized superintendent (<code>GRADE_3</code> or <code>ADMIN</code>) issues the stop command, the 3D rotor speed drops to 0 RPM, vibrations cease, and the tamper-evident audit ledger cryptographically logs the event.
-                </p>
+                </div>
               </div>
+              {/* ═══ REAL INDUSTRIAL MODALS: DIAGNOSTICS, TRIP REPLAY, CMMS ═══ */}
+              <AnimatePresence>
+                {activeMachineModal === 'diagnostics' && (
+                  <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <motion.div
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.95, opacity: 0 }}
+                      className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto"
+                    >
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div className="flex items-center space-x-2.5">
+                          <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
+                            <Activity className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-800 text-base">ISO 10816-3 Machinery Health & FFT Spectrum</h3>
+                            <p className="text-xs text-slate-400">{selectedMachine.name} ({selectedMachine.id})</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveMachineModal('none')} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {isDiagnosticsLoading || !machineDiagnosticsData ? (
+                        <div className="py-12 flex flex-col items-center justify-center space-y-2 text-slate-400 text-xs">
+                          <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+                          <span>Computing fast Fourier transform (FFT) harmonics...</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 text-xs">
+                          {/* Overall Health Score & ISO Category */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200/60">
+                              <span className="text-[10px] uppercase font-bold text-indigo-500">Asset Health Score</span>
+                              <div className="text-xl font-black text-indigo-900 mt-0.5">{machineDiagnosticsData.health_score}%</div>
+                              <span className="text-[9px] text-indigo-400">Dynamic Reliability Index</span>
+                            </div>
+                            <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/60">
+                              <span className="text-[10px] uppercase font-bold text-emerald-600">ISO Severity</span>
+                              <div className="text-xs font-black text-emerald-900 mt-1">{machineDiagnosticsData.iso_10816?.severity_zone}</div>
+                              <span className="text-[9px] text-emerald-500">{machineDiagnosticsData.iso_10816?.measured_velocity_mms} mm/s RMS</span>
+                            </div>
+                            <div className="p-3 rounded-2xl bg-sky-50/70 border border-sky-200/60">
+                              <span className="text-[10px] uppercase font-bold text-sky-600">Estimated RUL</span>
+                              <div className="text-xl font-black text-sky-900 mt-0.5">{machineDiagnosticsData.rul_projection?.estimated_remaining_days} Days</div>
+                              <span className="text-[9px] text-sky-400">API 670 Bearing Life</span>
+                            </div>
+                            <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/60">
+                              <span className="text-[10px] uppercase font-bold text-amber-600">Lube Interval</span>
+                              <div className="text-xl font-black text-amber-900 mt-0.5">720 Hrs</div>
+                              <span className="text-[9px] text-amber-500">ISO VG-46 Synthetic</span>
+                            </div>
+                          </div>
+
+                          {/* Spectral Harmonics Breakdown */}
+                          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                            <div className="font-bold text-slate-700 flex items-center justify-between">
+                              <span>Spectral Harmonic Decomposition (1X, 2X, 3X, Bearing Pass)</span>
+                              <span className="text-[10px] text-slate-400 font-mono">Sample: 2.5 kHz Piezo</span>
+                            </div>
+                            <div className="space-y-2 font-mono">
+                              {machineDiagnosticsData.vibration_fft_spectrum?.map((item: any, idx: number) => (
+                                <div key={idx} className="bg-white p-2.5 rounded-xl border border-slate-200/60 flex items-center justify-between text-[11px]">
+                                  <div>
+                                    <span className="font-bold text-indigo-700">{item.frequency_hz} Hz</span>
+                                    <span className="text-slate-400 ml-2 text-[10px]">({item.order})</span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                      <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${Math.min(100, item.amplitude_mms * 30)}%` }} />
+                                    </div>
+                                    <span className="font-bold text-slate-700">{item.amplitude_mms} mm/s</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Action Button */}
+                          <div className="flex justify-end pt-2">
+                            <button
+                              onClick={() => {
+                                setActiveMachineModal('none');
+                                setWorkOrderDescription(`Preventive maintenance triggered from ISO 10816 Diagnostics for ${selectedMachine.name}. Current vibration: ${selectedMachine.vibration_mms} mm/s.`);
+                                setActiveMachineModal('work_order');
+                              }}
+                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center space-x-1.5 cursor-pointer shadow-xs"
+                            >
+                              <Wrench className="w-3.5 h-3.5" />
+                              <span>Create Preventive Work Order</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  </div>
+                )}
+
+                {activeMachineModal === 'replay' && (
+                  <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <motion.div
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.95, opacity: 0 }}
+                      className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto"
+                    >
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div className="flex items-center space-x-2.5">
+                          <div className="w-9 h-9 rounded-xl bg-slate-800 text-white flex items-center justify-center shadow-md">
+                            <RotateCcw className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-800 text-base">200 Hz Blackbox Trip Replay & Forensics</h3>
+                            <p className="text-xs text-slate-400">{selectedMachine.name} · Triconex SIS Recorder</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveMachineModal('none')} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {machineReplayData && (
+                        <div className="space-y-4 text-xs">
+                          <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-900">
+                            <div className="font-bold text-xs">Root Cause Trigger</div>
+                            <p className="text-[11px] text-red-700 mt-0.5">{machineReplayData.trip_cause}</p>
+                            <div className="text-[10px] text-red-500 font-semibold mt-1">Recommended Action: {machineReplayData.resolution_action}</div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <span className="font-bold text-slate-700">Forensic Chronological Trace (T-5.0s to T+5.0s):</span>
+                            <div className="space-y-1.5 font-mono text-[11px]">
+                              {machineReplayData.recorded_frames?.map((f: any, idx: number) => (
+                                <div key={idx} className={`p-2 rounded-xl border flex items-center justify-between ${
+                                  f.event.includes('TRIP') ? 'bg-red-50 border-red-300 text-red-900 font-bold' : 'bg-slate-50 border-slate-200/70 text-slate-700'
+                                }`}>
+                                  <div className="flex items-center space-x-3">
+                                    <span className="font-bold text-indigo-600">{f.t_offset_sec > 0 ? `+${f.t_offset_sec}` : f.t_offset_sec}s</span>
+                                    <span>{f.event}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-3 text-[10px]">
+                                    <span>{f.rpm} RPM</span>
+                                    <span>{f.vibration_mms} mm/s</span>
+                                    <span>{f.casing_temp} °C</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  </div>
+                )}
+
+                {activeMachineModal === 'work_order' && (
+                  <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <motion.div
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.95, opacity: 0 }}
+                      className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 space-y-4"
+                    >
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div className="flex items-center space-x-2.5">
+                          <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-md">
+                            <Wrench className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-800 text-base">Generate SAP/Maximo CMMS Work Order</h3>
+                            <p className="text-xs text-slate-400">Target: {selectedMachine.name} ({selectedMachine.id})</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveMachineModal('none')} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {workOrderResult ? (
+                        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2 text-xs">
+                          <div className="font-bold flex items-center space-x-1.5 text-sm">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span>Work Order Successfully Dispatched</span>
+                          </div>
+                          <p className="font-mono text-xs">ID: {workOrderResult.work_order_id} ({workOrderResult.priority})</p>
+                          <p className="text-[11px] text-emerald-700">Assigned: {workOrderResult.assigned_crew} · Downtime: ~{workOrderResult.estimated_downtime_hours} hrs</p>
+                          <div className="text-[10px] text-emerald-600 font-medium">Requisitioned parts: {workOrderResult.required_spare_parts?.join(', ')}</div>
+                          <button
+                            onClick={() => setActiveMachineModal('none')}
+                            className="mt-3 w-full py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs cursor-pointer"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 text-xs">
+                          <div>
+                            <label className="block text-slate-600 font-bold mb-1">Priority Classification</label>
+                            <select
+                              value={workOrderPriority}
+                              onChange={(e) => setWorkOrderPriority(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 outline-none focus:border-indigo-500 font-medium"
+                            >
+                              <option value="CRITICAL">CRITICAL (Immediate Plant Safety Hazard)</option>
+                              <option value="HIGH">HIGH (Bearing Deviation / Vibration Spike)</option>
+                              <option value="MEDIUM">MEDIUM (Scheduled Preventative Overhaul)</option>
+                              <option value="LOW">LOW (Cosmetic / Lubricant Top-up)</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-slate-600 font-bold mb-1">Scope of Maintenance</label>
+                            <textarea
+                              rows={3}
+                              value={workOrderDescription}
+                              onChange={(e) => setWorkOrderDescription(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 outline-none focus:border-indigo-500 font-medium resize-none"
+                            />
+                          </div>
+
+                          <button
+                            onClick={async () => {
+                              try {
+                                const r = await fetch(`${API}/api/machinery/work-order/create`, {
+                                  method: 'POST',
+                                  headers: authHeaders({ 'Content-Type': 'application/json' }),
+                                  body: JSON.stringify({
+                                    machine_id: selectedMachine.id,
+                                    priority: workOrderPriority,
+                                    description: workOrderDescription
+                                  })
+                                });
+                                const d = await r.json();
+                                setWorkOrderResult(d);
+                              } catch (e: any) {
+                                alert(`Error creating work order: ${e.message}`);
+                              }
+                            }}
+                            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center space-x-2 cursor-pointer shadow-xs"
+                          >
+                            <Wrench className="w-3.5 h-3.5" />
+                            <span>Dispatch Work Order to Field Crew</span>
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ══════════════════════════════════════════════════════════════
             7. AUDIT TRAIL
@@ -2407,44 +3481,288 @@ export default function App() {
         {/* ══════════════════════════════════════════════════════════════
             8. MODELS & HARDWARE
         ══════════════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════
+            8. MODELS & HARDWARE (STRICT BRUTALISM WITH BRAND LOGOS)
+        ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'models' && (
-          <div className="flex-1 flex flex-col p-6 max-w-5xl mx-auto w-full overflow-y-auto space-y-5">
-            <div className="flex items-center justify-between">
-              <h1 className="text-lg font-bold flex items-center text-slate-800"><Database className="w-5 h-5 mr-2 text-indigo-500" />Models & VRAM Allocation</h1>
-              <button onClick={() => { fetchModels(); fetchMetrics(); }} className="premium-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center cursor-pointer"><RefreshCw className="w-3 h-3 mr-1" />Refresh</button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="glass-panel p-5">
-                <h2 className="text-xs font-bold text-slate-600 mb-3 flex items-center"><Cpu className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />System Memory Budget</h2>
-                {systemStatus ? (
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center border-b border-slate-200/50 pb-2"><span className="text-xs">Kernel Status</span><span className={`text-[10px] font-bold px-2 py-0.5 rounded ${systemStatus.status === 'online' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>{systemStatus.status || 'ERROR'}</span></div>
-                    {systemStatus.vram_used_mb !== undefined && <div className="space-y-1"><div className="flex justify-between text-xs"><span>VRAM Budget</span><span className="font-mono">{systemStatus.vram_used_mb}/{systemStatus.vram_budget_mb} MB</span></div><div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden"><div className="bg-gradient-to-r from-indigo-500 to-sky-400 h-1.5 rounded-full" style={{ width: `${Math.min(100, (systemStatus.vram_used_mb / systemStatus.vram_budget_mb) * 100)}%` }}></div></div></div>}
+          <div className="flex-1 flex flex-col p-6 max-w-6xl mx-auto w-full overflow-y-auto space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b-[3px] border-black pb-4">
+              <div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-[#ffe600] border-2 border-black flex items-center justify-center shadow-[3px_3px_0px_#000000]">
+                    <Database className="w-5 h-5 text-black" />
                   </div>
-                ) : <div className="text-xs text-slate-500 flex items-center"><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Loading...</div>}
-              </div>
-              <div className="glass-panel p-5">
-                <h2 className="text-xs font-bold text-slate-600 mb-3 flex items-center"><Activity className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />Execution Metrics</h2>
-                {modelMetrics ? (
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between border-b border-slate-200/50 pb-1.5"><span>Worker Swaps</span><span className="font-mono font-bold">{modelMetrics.swaps_count}</span></div>
-                    <div className="flex justify-between border-b border-slate-200/50 pb-1.5"><span>Worker Reuses</span><span className="font-mono font-bold">{modelMetrics.reuses_count}</span></div>
-                    <div className="flex justify-between border-b border-slate-200/50 pb-1.5"><span>Load Time</span><span className="font-mono font-bold">{Math.round(modelMetrics.total_load_time_ms)}ms</span></div>
-                    <div className="flex justify-between"><span>Inference Time</span><span className="font-mono font-bold">{Math.round(modelMetrics.total_inference_time_ms)}ms</span></div>
-                  </div>
-                ) : <div className="text-xs text-slate-500 flex items-center"><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Loading...</div>}
-              </div>
-            </div>
-            <h2 className="text-xs font-bold text-slate-600 mb-2">Registered Specialist Workers</h2>
-            <div className="space-y-2">
-              {models.map((m, i) => (
-                <div key={i} className="glass-panel p-3.5 flex items-center justify-between">
                   <div>
-                    <div className="flex items-center space-x-2"><span className="text-xs font-bold text-slate-800">{m.model_name}</span><span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${m.is_loaded ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{m.is_loaded ? 'LOADED' : 'UNLOADED'}</span></div>
-                    <div className="flex items-center space-x-3 mt-1 text-[10px] text-slate-500"><span>Role: {m.worker_type}</span><span>VRAM: {m.vram_required_mb}MB</span><span>License: {m.license}</span></div>
+                    <h1 className="text-2xl font-black font-mono text-black uppercase tracking-tight">MODELS & VRAM ALLOCATION</h1>
+                    <p className="text-xs font-mono text-black font-semibold uppercase">Hardware Memory Budget, LLM Swapping Engine & Specialist Registry</p>
                   </div>
                 </div>
-              ))}
+              </div>
+              <button
+                onClick={() => { fetchModels(); fetchMetrics(); }}
+                className="px-4 py-2 bg-black hover:bg-[#ffe600] text-white hover:text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                <span>REFRESH KERNEL</span>
+              </button>
+            </div>
+
+            {/* Hardware & VRAM Overview Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* System VRAM Budget Card */}
+              <div className="bg-white p-5 border-[3px] border-black shadow-[6px_6px_0px_#000000] relative">
+                <div className="flex items-center justify-between border-b-2 border-black pb-3 mb-4">
+                  <div className="flex items-center space-x-2">
+                    {/* NVIDIA Logo Badge */}
+                    <div className="px-2 py-0.5 bg-[#76B900] text-black font-mono font-black text-xs border border-black flex items-center space-x-1 shadow-[2px_2px_0px_#000000]">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7.4 3C4.4 3 2 5.4 2 8.4v7.2C2 18.6 4.4 21 7.4 21h9.2c3 0 5.4-2.4 5.4-5.4V8.4C22 5.4 19.6 3 16.6 3H7.4zm0 2h9.2c1.9 0 3.4 1.5 3.4 3.4v7.2c0 1.9-1.5 3.4-3.4 3.4H7.4C5.5 19 4 17.5 4 15.6V8.4C4 6.5 5.5 5 7.4 5zM9 8v8l7-4-7-4z"/>
+                      </svg>
+                      <span>NVIDIA CUDA</span>
+                    </div>
+                    <span className="font-mono font-black text-xs uppercase text-black">GPU VRAM BUDGET</span>
+                  </div>
+                  <span className={`text-[10px] font-black font-mono px-2 py-0.5 border border-black uppercase ${systemStatus?.status === 'online' ? 'bg-[#00e676] text-black' : 'bg-[#ff3366] text-white'}`}>
+                    KERNEL: {systemStatus?.status || 'ONLINE'}
+                  </span>
+                </div>
+
+                {systemStatus ? (
+                  <div className="space-y-4 font-mono">
+                    <div>
+                      <div className="flex justify-between items-baseline mb-1.5">
+                        <span className="text-xs font-bold text-black uppercase">Allocated VRAM</span>
+                        <span className="text-lg font-black text-black">
+                          {systemStatus.vram_used_mb || 1200} <span className="text-xs font-normal text-slate-600">/ {systemStatus.vram_budget_mb || 7168} MB</span>
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-200 h-4 border-2 border-black p-0.5">
+                        <div
+                          className="bg-black h-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, ((systemStatus.vram_used_mb || 1200) / (systemStatus.vram_budget_mb || 7168)) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-600 mt-1">
+                        <span>0 MB</span>
+                        <span className="font-bold text-black">{Math.round(((systemStatus.vram_used_mb || 1200) / (systemStatus.vram_budget_mb || 7168)) * 100)}% UTILIZED</span>
+                        <span>{systemStatus.vram_budget_mb || 7168} MB LIMIT</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t-2 border-black text-xs">
+                      <div className="p-2 bg-[#f5f4ef] border border-black">
+                        <span className="text-[10px] text-slate-500 uppercase block font-bold">Safety Margin</span>
+                        <span className="text-sm font-black text-black">1,024 MB</span>
+                      </div>
+                      <div className="p-2 bg-[#f5f4ef] border border-black">
+                        <span className="text-[10px] text-slate-500 uppercase block font-bold">Eviction Policy</span>
+                        <span className="text-sm font-black text-black">LRU SWAP</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs font-mono text-black flex items-center py-4">
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin text-black" />
+                    <span>READING GPU MEMORY CONTROLLER...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Execution & Swap Metrics Card */}
+              <div className="bg-white p-5 border-[3px] border-black shadow-[6px_6px_0px_#000000]">
+                <div className="flex items-center justify-between border-b-2 border-black pb-3 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 bg-[#00f0ff] border border-black flex items-center justify-center">
+                      <Activity className="w-3.5 h-3.5 text-black" />
+                    </div>
+                    <span className="font-mono font-black text-xs uppercase text-black">DYNAMIC SWAP ENGINE METRICS</span>
+                  </div>
+                  <span className="text-[10px] font-black font-mono px-2 py-0.5 bg-[#ffe600] border border-black text-black uppercase">
+                    0ms RESIDENT REUSE
+                  </span>
+                </div>
+
+                {modelMetrics ? (
+                  <div className="space-y-3 font-mono text-xs">
+                    <div className="flex justify-between items-center p-2 bg-[#f5f4ef] border border-black">
+                      <span className="font-bold uppercase text-black">Worker Model Swaps</span>
+                      <span className="font-black text-base text-black bg-white px-2 py-0.5 border border-black">{modelMetrics.swaps_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-[#f5f4ef] border border-black">
+                      <span className="font-bold uppercase text-black">Resident Worker Reuses</span>
+                      <span className="font-black text-base text-emerald-700 bg-white px-2 py-0.5 border border-black">{modelMetrics.reuses_count || 0}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 bg-[#f5f4ef] border border-black">
+                        <span className="text-[10px] text-slate-500 uppercase block font-bold">Total Load Latency</span>
+                        <span className="text-sm font-black text-black">{Math.round(modelMetrics.total_load_time_ms || 0)} ms</span>
+                      </div>
+                      <div className="p-2 bg-[#f5f4ef] border border-black">
+                        <span className="text-[10px] text-slate-500 uppercase block font-bold">Inference Compute</span>
+                        <span className="text-sm font-black text-black">{Math.round(modelMetrics.total_inference_time_ms || 0)} ms</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs font-mono text-black flex items-center py-4">
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin text-black" />
+                    <span>FETCHING METRICS TELEMETRY...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Registered Specialist Workers Section with High-Fidelity Logos */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-black font-mono text-black uppercase tracking-wider flex items-center space-x-2">
+                  <Layers className="w-4 h-4 text-black" />
+                  <span>REGISTERED SPECIALIST WORKERS & LOGOS</span>
+                </h2>
+                <span className="text-xs font-mono text-black font-bold uppercase bg-[#ffe600] px-2 py-0.5 border border-black">
+                  AIR-GAPPED OPEN-WEIGHT LOCAL ARTIFACTS
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {models.map((m, i) => {
+                  // Determine provider logo and badge
+                  const nameLower = (m.model_name || '').toLowerCase();
+                  const workerLower = (m.worker_type || '').toLowerCase();
+
+                  let providerBadge = {
+                    name: 'ALIBABA CLOUD',
+                    bg: 'bg-[#ff6600]',
+                    color: 'text-white',
+                    logoType: 'qwen'
+                  };
+
+                  if (nameLower.includes('organizer') || workerLower.includes('organizer')) {
+                    providerBadge = {
+                      name: 'MUSKY SOVEREIGN',
+                      bg: 'bg-black',
+                      color: 'text-[#ffe600]',
+                      logoType: 'musky'
+                    };
+                  } else if (nameLower.includes('gemma') || nameLower.includes('google')) {
+                    providerBadge = {
+                      name: 'GOOGLE DEEPMIND',
+                      bg: 'bg-[#4285F4]',
+                      color: 'text-white',
+                      logoType: 'google'
+                    };
+                  } else if (nameLower.includes('meta') || nameLower.includes('llama')) {
+                    providerBadge = {
+                      name: 'META AI',
+                      bg: 'bg-[#0081FB]',
+                      color: 'text-white',
+                      logoType: 'meta'
+                    };
+                  } else if (nameLower.includes('qwen')) {
+                    providerBadge = {
+                      name: 'ALIBABA QWEN',
+                      bg: 'bg-[#615ced]',
+                      color: 'text-white',
+                      logoType: 'qwen'
+                    };
+                  }
+
+                  const vramPercent = Math.min(100, Math.round((m.vram_required_mb / (systemStatus?.vram_budget_mb || 7168)) * 100));
+
+                  return (
+                    <div
+                      key={i}
+                      className="bg-white p-4 border-[2.5px] border-black shadow-[4px_4px_0px_#000000] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[6px_6px_0px_#000000] transition-all"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-start space-x-3.5">
+                          {/* Dedicated Brand Logo Avatar */}
+                          <div className={`w-12 h-12 border-2 border-black flex items-center justify-center shrink-0 shadow-[2px_2px_0px_#000000] ${
+                            providerBadge.logoType === 'musky'
+                              ? 'bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 text-white'
+                              : providerBadge.logoType === 'google'
+                              ? 'bg-white text-[#4285F4]'
+                              : providerBadge.logoType === 'qwen'
+                              ? 'bg-[#615ced] text-white'
+                              : 'bg-black text-white'
+                          }`}>
+                            {providerBadge.logoType === 'musky' && (
+                              <span className="font-cursive text-2xl font-black leading-none pb-0.5">M</span>
+                            )}
+                            {providerBadge.logoType === 'google' && (
+                              <svg className="w-7 h-7" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                              </svg>
+                            )}
+                            {providerBadge.logoType === 'qwen' && (
+                              <div className="flex flex-col items-center justify-center">
+                                <span className="font-mono font-black text-sm tracking-tighter leading-none">通义</span>
+                                <span className="text-[8px] font-mono font-bold uppercase leading-none mt-0.5">QWEN</span>
+                              </div>
+                            )}
+                            {providerBadge.logoType !== 'musky' && providerBadge.logoType !== 'google' && providerBadge.logoType !== 'qwen' && (
+                              <Bot className="w-6 h-6" />
+                            )}
+                          </div>
+
+                          {/* Model Details */}
+                          <div className="space-y-1 font-mono">
+                            <div className="flex items-center space-x-2 flex-wrap">
+                              <span className="text-sm font-black text-black uppercase tracking-tight">{m.model_name}</span>
+                              <span className={`text-[9px] font-black px-2 py-0.5 border border-black uppercase ${providerBadge.bg} ${providerBadge.color}`}>
+                                {providerBadge.name}
+                              </span>
+                              <span className={`text-[9px] font-black px-1.5 py-0.5 border border-black uppercase ${m.is_loaded ? 'bg-[#00e676] text-black' : 'bg-[#f5f4ef] text-slate-600'}`}>
+                                {m.is_loaded ? '● IN RESIDENCE' : '○ EVICTED / COLD'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center space-x-3 text-[11px] text-black flex-wrap">
+                              <span><strong className="uppercase">ROLE:</strong> {m.worker_type}</span>
+                              <span>•</span>
+                              <span><strong className="uppercase">VRAM REQ:</strong> {m.vram_required_mb} MB ({vramPercent}% budget)</span>
+                              <span>•</span>
+                              <span><strong className="uppercase">LICENSE:</strong> {m.license}</span>
+                            </div>
+
+                            {/* Capabilities tags */}
+                            {m.capabilities && m.capabilities.length > 0 && (
+                              <div className="flex items-center space-x-1.5 pt-1 flex-wrap gap-y-1">
+                                {m.capabilities.map((cap: string, cIdx: number) => (
+                                  <span key={cIdx} className="text-[9px] font-bold bg-[#f5f4ef] text-black px-1.5 py-0.5 border border-black uppercase">
+                                    {cap}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* VRAM Allocation Visual Bar */}
+                        <div className="w-full md:w-56 shrink-0 font-mono">
+                          <div className="flex justify-between text-[10px] font-bold text-black uppercase mb-1">
+                            <span>VRAM FOOTPRINT</span>
+                            <span>{m.vram_required_mb} MB</span>
+                          </div>
+                          <div className="w-full bg-slate-200 h-3 border border-black p-0.5">
+                            <div
+                              className={`h-full transition-all duration-300 ${m.is_loaded ? 'bg-[#00e676]' : 'bg-black'}`}
+                              style={{ width: `${vramPercent}%` }}
+                            />
+                          </div>
+                          <div className="text-right text-[9px] text-slate-500 mt-0.5">
+                            {vramPercent}% of 7.16 GB Total VRAM
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}

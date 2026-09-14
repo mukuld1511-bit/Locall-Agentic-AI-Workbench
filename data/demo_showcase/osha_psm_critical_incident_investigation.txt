@@ -1,0 +1,52 @@
+================================================================================
+CRITICAL SAFETY & PROCESS SAFETY MANAGEMENT (PSM) INCIDENT REPORT
+REGULATORY AUDIT REF: OSHA 1910.119 / API RP 754 TIER-1 PREVENTION DOSSIER
+================================================================================
+FACILITY: SOVEREIGN CONTINUOUS CATALYTIC CRACKER & CDU-300 COMPLEX
+UNIT CODE: CDU-301 / STABILIZER OVERHEAD TRAIN
+EQUIPMENT TAG: PUMP-301A (SOUR NAPHTHA CHARGE PUMP)
+DATE / TIME OF FLAGGED ANOMALY: 2026-09-13 22:14:08 UTC
+CLASSIFICATION: TIER 1 PROCESS SAFETY EVENT PREVENTED VIA AUTONOMOUS TRIP
+INVESTIGATION STATUS: ROOT CAUSE ANALYSIS (RCA) - SOVEREIGN AI WORKBENCH
+
+1. EXECUTIVE SUMMARY & ANOMALY CHAIN
+--------------------------------------------------------------------------------
+During steady-state operation at 342°C and 18.2 bar column overhead pressure, 
+primary charge pump P-301A registered progressive mechanical degradation over 
+a 4-hour monitoring window:
+  - Bearing Radial Vibration escalated from 1.8 mm/s to 8.4 mm/s RMS (ISO 10816 Zone D).
+  - High-frequency ultrasonic demodulation revealed outer raceway spalling (BPFO = 108.4 Hz).
+  - Phased Array Ultrasonic Testing (PAUT) along discharge bend CKT-301-01 indicated 
+    severe localized thinning down to 2.15 mm against an ASME B31.3 T-min allowable of 3.20 mm.
+  - Calculated burst pressure under Barlow equation reduced factor of safety to 0.94 (FAILURE IMMINENT).
+
+2. QUANTITATIVE INTEGRITY METRICS
+--------------------------------------------------------------------------------
+Parametric Check        | Measured Value | Nominal Design | Threshold Limit | Compliance Standard
+------------------------|----------------|----------------|-----------------|--------------------
+Discharge Wall (T_act)  | 2.15 mm        | 8.18 mm        | 3.20 mm (T_min) | ASME B31.3 / B31G [FAIL]
+Radial Vibration        | 8.42 mm/s RMS  | 1.80 mm/s RMS  | 4.50 mm/s RMS   | ISO 10816-3 Class II [FAIL]
+Shaft Orbital Excursion | 82.4 microns   | 18.0 microns   | 45.0 microns    | API 610 12th Ed. [FAIL]
+Bearing Temp (DE)       | 104.2 °C       | 68.0 °C        | 92.0 °C TRIP    | API 670 Machinery Prot. [FAIL]
+SIL Safety Loop Status  | 1-oo-2 VOTED   | Redundant      | Auto Trip Ready | IEC 61508 / SIL-3 [ARMED]
+
+3. AUTONOMOUS AIR-GAPPED MITIGATION EXECUTED
+--------------------------------------------------------------------------------
+Under the Sovereign Agentic Safety Matrix, the autonomous system executed the following:
+  Step 1 [22:14:12] -> Initiated SIL-3 trip command to actuated motor contactor P-301A-ESD.
+  Step 2 [22:14:14] -> Commanded auto-start and soft-ramp of 100% standby pump P-301B.
+  Step 3 [22:14:18] -> Modulated XV-30101 emergency isolation valve to isolate compromised spool.
+  Step 4 [22:14:22] -> Dispatched SAP Plant Maintenance Emergency Work Order (WO-99482)
+                       with P&ID markup coordinates and pre-kitted mechanical seals.
+
+4. REQUIRED ACTIONS FOR TURNAROUND SQUAD
+--------------------------------------------------------------------------------
+1. Isolate and lock-out/tag-out (LOTO) breaker 52-P301A at 4.16 kV Switchgear Bus 1B.
+2. Cold-cut and extract 8" A106-GrB Schedule 40 elbow (Spool S-301-E04).
+3. Install shop-fabricated 316L clad spool piece rated for 25 bar design pressure.
+4. Replace SKF 7314 BECBM angular contact bearings on DE and NDE bearing housings.
+5. Perform 100% radiographic weld testing before de-isolation.
+
+ENGINEERING SIGN-OFF:
+Lead Rotating Machinery Specialist: DR. A. RAMAN, PE (CHEVRON / SOVEREIGN AUDIT)
+Chief Process Safety Officer: M. VERMA, CEng FIChemE

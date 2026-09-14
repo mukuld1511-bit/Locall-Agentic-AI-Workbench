@@ -97,27 +97,37 @@ ipcMain.handle('dialog-open-folder', async () => {
 });
 
 function startPythonBackend() {
-  const pythonExecutable = path.join(__dirname, '../.venv/Scripts/python.exe');
-  const backendScript = path.join(__dirname, '../backend/api_server.py');
+  const http = require('http');
 
-  const projectRoot = path.join(__dirname, '..');
-  console.log('Starting Python backend...', backendScript);
-  pythonProcess = spawn(pythonExecutable, [backendScript], {
-    cwd: projectRoot,
-    env: { ...process.env, PYTHONUNBUFFERED: '1' },
-    windowsHide: true,
+  // Check if backend is already running on port 8088 to prevent [WinError 10048]
+  const req = http.get('http://127.0.0.1:8088/api/system/status', (res) => {
+    console.log('Detected existing Python backend already active on port 8088 (reusing).');
   });
 
-  pythonProcess.stdout.on('data', (data) => {
-    console.log(`Backend: ${data}`);
-  });
+  req.on('error', () => {
+    // Port 8088 is free, spawn backend process
+    const pythonExecutable = path.join(__dirname, '../.venv/Scripts/python.exe');
+    const backendScript = path.join(__dirname, '../backend/api_server.py');
+    const projectRoot = path.join(__dirname, '..');
 
-  pythonProcess.stderr.on('data', (data) => {
-    console.error(`Backend: ${data}`);
-  });
+    console.log('Starting Python backend...', backendScript);
+    pythonProcess = spawn(pythonExecutable, [backendScript], {
+      cwd: projectRoot,
+      env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      windowsHide: true,
+    });
 
-  pythonProcess.on('close', (code) => {
-    console.log(`Backend exited with code ${code}`);
+    pythonProcess.stdout.on('data', (data) => {
+      console.log(`Backend: ${data}`);
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      console.error(`Backend: ${data}`);
+    });
+
+    pythonProcess.on('close', (code) => {
+      console.log(`Backend exited with code ${code}`);
+    });
   });
 }
 
@@ -138,3 +148,4 @@ app.on('quit', () => {
     pythonProcess.kill();
   }
 });
+
