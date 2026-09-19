@@ -68,3 +68,5 @@ PHASE2_FINISH.sh
 ~$*.docx
 ~$*.xlsx
 ~$*.pptx
+*.tmp
+~*.tmp

@@ -124,7 +124,7 @@ interface IdeFileNode { name: string; path: string; is_dir: boolean; children?: 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [messages, setMessages] = useState<Message[]>([
-    { id: 'init', sender: 'system', text: 'Sovereign Industrial AI Workbench Initialized.\nZero cloud egress. Central Policy Engine & RBAC active.', timestamp: new Date().toLocaleTimeString() }
+    { id: 'init', sender: 'system', text: 'Workbench active. Local air-gapped node ready.', timestamp: new Date().toLocaleTimeString() }
   ]);
   const [input, setInput] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
@@ -1091,13 +1091,13 @@ export default function App() {
 
   const navItems = [
     { key: 'home', icon: Compass, label: 'Overview' },
-    { key: 'chat', icon: MessageSquare, label: 'AI Chat' },
-    { key: 'machinery', icon: Gauge, label: 'Refinery Machinery' },
-    { key: 'ide', icon: Code2, label: 'Sovereign Studio' },
-    { key: 'database', icon: Table, label: 'Database & Analytics' },
-    { key: 'employees', icon: Users, label: 'Employees & RBAC' },
-    { key: 'audit', icon: ClipboardList, label: 'Audit Trail' },
-    { key: 'models', icon: Database, label: 'Models & VRAM' },
+    { key: 'chat', icon: MessageSquare, label: 'Chat' },
+    { key: 'machinery', icon: Gauge, label: 'Machinery' },
+    { key: 'ide', icon: Code2, label: 'Studio' },
+    { key: 'database', icon: Table, label: 'Database' },
+    { key: 'employees', icon: Users, label: 'RBAC' },
+    { key: 'audit', icon: ClipboardList, label: 'Audit' },
+    { key: 'models', icon: Database, label: 'Models' },
     { key: 'settings', icon: Settings, label: 'Settings' },
   ];
 
@@ -1127,12 +1127,8 @@ export default function App() {
             <div className="w-14 h-14 bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 border-2 border-black flex items-center justify-center text-white shadow-[4px_4px_0px_#000000] mx-auto mb-3">
               <span className="font-cursive text-3xl font-black leading-none pb-0.5">M</span>
             </div>
-            <h1 className="font-cursive text-4xl font-bold text-black tracking-tight">Musky.AI</h1>
-            <p className="text-xs font-bold font-mono text-black mt-1 uppercase tracking-wider">SOVEREIGN INDUSTRIAL WORKBENCH · AIR-GAPPED</p>
-            <div className="mt-3 inline-flex items-center space-x-1.5 px-3 py-1 bg-[#ffe600] border-2 border-black text-black text-[11px] font-bold uppercase shadow-[2px_2px_0px_#000000]">
-              <Shield className="w-3.5 h-3.5 text-black" />
-              <span>RBAC CLEARANCE GATEWAY</span>
-            </div>
+            <h1 className="font-cursive text-3xl font-bold text-black tracking-tight">Musky.AI</h1>
+            <p className="text-xs font-mono text-slate-600 mt-1 uppercase">Air-Gapped Industrial Workbench</p>
           </div>
 
           {loginError && (
@@ -1142,17 +1138,17 @@ export default function App() {
             </div>
           )}
 
-          {/* Sequential Credentials Form */}
+          {/* Credentials Form */}
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
               <label className="text-[11px] font-black text-black uppercase tracking-wider block mb-1 font-mono">
-                {'[>]'} OPERATOR ID / USERNAME
+                Username
               </label>
               <input
                 type="text"
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
-                placeholder="e.g. admin, engineer_202, operator_101"
+                placeholder="admin, engineer_202, operator_101"
                 className="w-full px-3.5 py-2.5 bg-white border-2 border-black text-xs text-black outline-none font-mono font-bold shadow-[3px_3px_0px_#000000] focus:bg-[#ffe600]/20 transition-all"
                 required
               />
@@ -1160,13 +1156,13 @@ export default function App() {
 
             <div>
               <label className="text-[11px] font-black text-black uppercase tracking-wider block mb-1 font-mono">
-                {'[>]'} SECURITY PASSCODE
+                Password
               </label>
               <input
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="ENTER AUTHORIZED PASSCODE"
+                placeholder="Enter password"
                 className="w-full px-3.5 py-2.5 bg-white border-2 border-black text-xs text-black outline-none font-mono font-bold shadow-[3px_3px_0px_#000000] focus:bg-[#ffe600]/20 transition-all"
                 required
               />
@@ -1180,12 +1176,12 @@ export default function App() {
               {loginLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-black" />
-                  <span>VERIFYING CLEARANCE...</span>
+                  <span>Verifying...</span>
                 </>
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  <span>AUTHENTICATE & ENTER</span>
+                  <span>Sign In</span>
                 </>
               )}
             </button>
@@ -1193,8 +1189,8 @@ export default function App() {
 
           {/* Quick Demo Credentials */}
           <div className="mt-6 pt-4 border-t-2 border-black">
-            <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider text-center mb-2.5">
-              PRESET DEMO CLEARANCES
+            <div className="text-[10px] font-black font-mono text-slate-500 uppercase tracking-wider text-center mb-2.5">
+              Quick Access
             </div>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -1203,7 +1199,7 @@ export default function App() {
                 className="p-2 bg-white hover:bg-[#ffe600] text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 text-center transition-all cursor-pointer"
               >
                 <div className="text-[10px] font-black uppercase">Admin</div>
-                <div className="text-[9px] text-black font-mono font-bold">admin123</div>
+                <div className="text-[9px] text-slate-600 font-mono font-bold">admin123</div>
               </button>
               <button
                 type="button"
@@ -1211,7 +1207,7 @@ export default function App() {
                 className="p-2 bg-white hover:bg-[#00f0ff] text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 text-center transition-all cursor-pointer"
               >
                 <div className="text-[10px] font-black uppercase">Engineer</div>
-                <div className="text-[9px] text-black font-mono font-bold">demo123</div>
+                <div className="text-[9px] text-slate-600 font-mono font-bold">demo123</div>
               </button>
               <button
                 type="button"
@@ -1219,7 +1215,7 @@ export default function App() {
                 className="p-2 bg-white hover:bg-[#00e676] text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 text-center transition-all cursor-pointer"
               >
                 <div className="text-[10px] font-black uppercase">Operator</div>
-                <div className="text-[9px] text-black font-mono font-bold">demo123</div>
+                <div className="text-[9px] text-slate-600 font-mono font-bold">demo123</div>
               </button>
             </div>
           </div>
@@ -1304,17 +1300,16 @@ export default function App() {
             <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-white border-2 border-black shadow-[2px_2px_0px_#000000]" style={{ WebkitAppRegion: 'no-drag' } as any}>
               <Shield className="w-3.5 h-3.5 text-black" />
               <span className="text-[10px] font-black font-mono text-black uppercase tracking-wider">{currentUser.role}</span>
-              <span className="text-[9px] font-mono text-slate-600">({currentUser.username})</span>
               <select
                 value={currentUser.role}
                 onChange={(e) => switchClearance(e.target.value)}
                 className="text-[10px] font-mono bg-white text-black font-bold outline-none cursor-pointer pl-1 border-l border-black ml-1"
-                title="Switch Authorization Clearance"
+                title="Switch Clearance"
               >
-                <option value="ADMIN">ADMIN (Full Governance)</option>
-                <option value="GRADE_3">GRADE 3 (Superintendent)</option>
-                <option value="GRADE_2">GRADE 2 (Engineer)</option>
-                <option value="GRADE_1">GRADE 1 (Operator/Read-Only)</option>
+                <option value="ADMIN">ADMIN</option>
+                <option value="GRADE_3">GRADE 3</option>
+                <option value="GRADE_2">GRADE 2</option>
+                <option value="GRADE_1">GRADE 1</option>
               </select>
             </div>
           </div>
@@ -1323,7 +1318,7 @@ export default function App() {
             {backendOnline ? (
               <span className="flex items-center space-x-1.5 text-black text-[10px] font-black font-mono bg-[#00e676] px-2.5 py-1 border border-black shadow-[2px_2px_0px_#000000] uppercase">
                 <Wifi className="w-3 h-3 text-black" />
-                <span>AIR-GAPPED NODE</span>
+                <span>AIR-GAPPED</span>
               </span>
             ) : (
               <span className="flex items-center space-x-1 text-white text-[10px] font-black font-mono bg-[#ff3366] px-2.5 py-1 border border-black shadow-[2px_2px_0px_#000000] uppercase">
@@ -1335,8 +1330,8 @@ export default function App() {
             {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-1 px-3 py-1 bg-white hover:bg-[#ff3366] text-black hover:text-white border-2 border-black text-xs font-black font-mono uppercase shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
-              title="Sign Out / Lock Session"
+              className="flex items-center space-x-1 px-2.5 py-1 bg-white hover:bg-[#ff3366] text-black hover:text-white border-2 border-black text-xs font-black font-mono uppercase shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+              title="Lock Session"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>LOCK</span>
@@ -1354,83 +1349,68 @@ export default function App() {
         ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'home' && (
           <div className="flex-1 flex flex-col p-6 overflow-y-auto max-w-6xl mx-auto w-full space-y-6">
-            {/* Strict Brutal Hero Banner */}
-            <div className="bg-white p-8 relative overflow-hidden border-[3px] border-black shadow-[8px_8px_0px_#000000]">
-              {/* Industrial Hazard Corner Stripe */}
-              <div className="absolute top-0 right-0 w-32 h-6 hazard-stripe border-b-2 border-l-2 border-black" />
-
+            {/* Hero Banner */}
+            <div className="bg-white p-7 relative overflow-hidden border-[3px] border-black shadow-[6px_6px_0px_#000000]">
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="max-w-2xl space-y-3">
-                  <div className="inline-flex items-center space-x-2 px-3 py-1 bg-[#ffe600] border-2 border-black text-black text-xs font-black font-mono shadow-[3px_3px_0px_#000000] uppercase">
+                  <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 bg-[#ffe600] border-2 border-black text-black text-[11px] font-black font-mono shadow-[2px_2px_0px_#000000] uppercase">
                     <Sparkles className="w-3.5 h-3.5 text-black" />
-                    <span>SIH26117 · AIR-GAPPED SOVEREIGN AI SYSTEM</span>
+                    <span>AIR-GAPPED · ZERO EGRESS</span>
                   </div>
 
-                  <div className="space-y-1">
+                  <div>
                     <h1 className="text-3xl sm:text-4xl font-black text-black tracking-tight flex items-baseline gap-2.5 flex-wrap">
-                      <span className="font-mono uppercase">Welcome to</span>
                       <span className="font-cursive text-4xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 pr-1">
                         Musky.AI
                       </span>
+                      <span className="text-lg font-mono font-bold text-slate-700">Industrial Workbench</span>
                     </h1>
-                    <p className="text-xs font-bold font-mono text-black uppercase tracking-wider bg-[#00f0ff] inline-block px-2 py-0.5 border border-black mt-1">
-                      HIGH-CRITICALITY REFINERY ENGINEERING & SCADA ACTUATOR CONTROL
-                    </p>
                   </div>
 
-                  <p className="text-xs sm:text-sm text-black font-medium leading-relaxed max-w-xl font-mono">
-                    Zero cloud egress on-premise execution engineered for high-criticality refining infrastructure. Powered by verifiable cryptographic audits, multimodal vision inspection, and role-governed policy sandboxing.
+                  <p className="text-xs sm:text-sm text-slate-600 font-mono leading-relaxed max-w-xl">
+                    On-premise agentic AI for refinery SCADA operations, multimodal diagnostics, and deterministic safety interlocks.
                   </p>
 
                   <div className="pt-2 flex flex-wrap items-center gap-3">
                     <button
                       onClick={() => setActiveTab('chat')}
-                      className="px-5 py-2.5 bg-black hover:bg-[#ffe600] text-white hover:text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+                      className="px-4 py-2 bg-black hover:bg-[#ffe600] text-white hover:text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
                     >
                       <MessageSquare className="w-4 h-4" />
-                      <span>START SOVEREIGN CHAT</span>
+                      <span>CHAT</span>
                     </button>
                     <button
                       onClick={() => { setActiveTab('chat'); attachSampleDb(); }}
-                      className="px-4 py-2.5 bg-white hover:bg-[#00f0ff] text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+                      className="px-4 py-2 bg-white hover:bg-[#00f0ff] text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
                     >
                       <Database className="w-4 h-4" />
-                      <span>ATTACH INDUSTRIAL DB</span>
+                      <span>ATTACH DB</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('ide')}
-                      className="px-4 py-2.5 bg-white hover:bg-[#00e676] text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+                      className="px-4 py-2 bg-white hover:bg-[#00e676] text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
                     >
                       <Code2 className="w-4 h-4" />
-                      <span>SOVEREIGN STUDIO</span>
+                      <span>STUDIO</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Right Status Badge in Hero */}
-                <div className="flex md:flex-col gap-3 shrink-0">
-                  <div className="p-4 bg-white border-2 border-black shadow-[4px_4px_0px_#000000] min-w-[180px]">
-                    <div className="flex items-center space-x-2 text-[10px] font-black text-black font-mono uppercase tracking-wider mb-1">
-                      <Shield className="w-3.5 h-3.5 text-black" />
-                      <span>CLEARANCE LEVEL</span>
-                    </div>
-                    <div className="text-lg font-black font-mono text-black uppercase">{currentUser.role}</div>
-                    <div className="text-[10px] font-mono font-bold text-slate-700 truncate max-w-[150px]">{currentUser.full_name}</div>
-                  </div>
-
-                  <div className="p-4 bg-[#00e676] border-2 border-black shadow-[4px_4px_0px_#000000] min-w-[180px]">
+                {/* Right Status Badge */}
+                <div className="shrink-0">
+                  <div className="p-4 bg-[#00e676] border-2 border-black shadow-[4px_4px_0px_#000000] min-w-[170px]">
                     <div className="flex items-center space-x-2 text-[10px] font-black text-black font-mono uppercase tracking-wider mb-1">
                       <div className="w-2.5 h-2.5 bg-black" />
                       <span>AIR-GAPPED NODE</span>
                     </div>
-                    <div className="text-base font-black font-mono text-black uppercase">ZERO CLOUD EGRESS</div>
-                    <div className="text-[10px] font-mono font-bold text-black uppercase">100% LOCAL INFERENCE</div>
+                    <div className="text-base font-black font-mono text-black uppercase">100% LOCAL GPU</div>
+                    <div className="text-[10px] font-mono font-bold text-black uppercase">ZERO CLOUD EGRESS</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Quick Metrics & Hardware Meter */}
+            {/* Quick Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white p-4 border-[2.5px] border-black shadow-[4px_4px_0px_#000000]">
                 <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider mb-1 flex items-center justify-between">
@@ -1438,56 +1418,46 @@ export default function App() {
                   <Shield className="w-3.5 h-3.5 text-black" />
                 </div>
                 <div className="text-xl font-black font-mono text-black uppercase">{currentUser.role}</div>
-                <div className="text-[11px] font-mono text-slate-700 mt-0.5 truncate">{currentUser.full_name}</div>
+                <div className="text-[11px] font-mono text-slate-600 mt-0.5 truncate">{currentUser.username}</div>
               </div>
 
               <div className="bg-white p-4 border-[2.5px] border-black shadow-[4px_4px_0px_#000000]">
                 <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider mb-1 flex items-center justify-between">
-                  <span className="flex items-center space-x-1">
-                    <span>VRAM ALLOCATION</span>
-                  </span>
-                  <div className="flex items-center space-x-1">
-                    <span className="inline-flex items-center px-1.5 py-0.5 bg-[#00e676] border border-black text-[9px] font-mono font-black text-black leading-none">
-                      <svg className="w-2.5 h-2.5 mr-1 inline-block" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M7.4 3C4.4 3 2 5.4 2 8.4v7.2C2 18.6 4.4 21 7.4 21h9.2c3 0 5.4-2.4 5.4-5.4V8.4C22 5.4 19.6 3 16.6 3H7.4zm0 2h9.2c1.9 0 3.4 1.5 3.4 3.4v7.2c0 1.9-1.5 3.4-3.4 3.4H7.4C5.5 19 4 17.5 4 15.6V8.4C4 6.5 5.5 5 7.4 5zM9 8v8l7-4-7-4z"/>
-                      </svg>
-                      RTX GPU
-                    </span>
-                    <HardDrive className="w-3.5 h-3.5 text-black" />
-                  </div>
+                  <span>VRAM</span>
+                  <HardDrive className="w-3.5 h-3.5 text-black" />
                 </div>
                 <div className="text-xl font-black text-black font-mono">
-                  {systemStatus?.vram_used_mb || 1200} <span className="text-xs text-black font-normal">/ {systemStatus?.vram_budget_mb || 7168} MB</span>
+                  {((systemStatus?.vram_used_mb || 1200) / 1024).toFixed(1)} <span className="text-xs text-slate-600 font-normal">/ {((systemStatus?.vram_budget_mb || 7168) / 1024).toFixed(1)} GB</span>
                 </div>
                 <div className="w-full bg-slate-200 h-2 mt-2 border border-black">
                   <div className="bg-black h-full transition-all" style={{ width: `${Math.min(100, ((systemStatus?.vram_used_mb || 1200) / (systemStatus?.vram_budget_mb || 7168)) * 100)}%` }} />
                 </div>
                 <div className="mt-2 flex items-center justify-between text-[9px] font-mono text-black">
-                  <span className="font-bold">DRIVER: CUDA 12.4</span>
-                  <span className="bg-[#ffe600] px-1 border border-black font-black">LOCAL ON-PREM</span>
+                  <span className="font-bold">CUDA 12.4</span>
+                  <span className="bg-[#ffe600] px-1 border border-black font-black">LOCAL</span>
                 </div>
               </div>
 
               <div className="bg-[#ffe600] p-4 border-[2.5px] border-black shadow-[4px_4px_0px_#000000]">
                 <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider mb-1 flex items-center justify-between">
-                  <span>POLICY ENGINE</span>
+                  <span>POLICY</span>
                   <CheckCircle2 className="w-3.5 h-3.5 text-black" />
                 </div>
-                <div className="text-xl font-black font-mono text-black uppercase">DEFAULT-DENY</div>
-                <div className="text-[11px] font-mono text-black font-bold mt-0.5 uppercase">SCADA GATE ACTIVE</div>
+                <div className="text-xl font-black font-mono text-black uppercase">ACTIVE</div>
+                <div className="text-[11px] font-mono text-black font-bold mt-0.5 uppercase">FAIL-CLOSED</div>
               </div>
 
               <div className="bg-white p-4 border-[2.5px] border-black shadow-[4px_4px_0px_#000000]">
                 <div className="text-[10px] font-black font-mono text-black uppercase tracking-wider mb-1 flex items-center justify-between">
-                  <span>AUDIT LEDGER</span>
+                  <span>AUDIT</span>
                   <ClipboardList className="w-3.5 h-3.5 text-black" />
                 </div>
                 <div className="text-xl font-black text-black font-mono">SHA-256</div>
-                <div className="text-[11px] font-mono text-slate-700 mt-0.5 uppercase">CRYPTOGRAPHIC CHAIN</div>
+                <div className="text-[11px] font-mono text-slate-600 mt-0.5 uppercase">CHAINED LEDGER</div>
               </div>
             </div>
 
-            {/* Presentation Showcase Cards */}
+            {/* Showcase Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div
                 onClick={() => { setActiveTab('chat'); attachSampleDb(); }}
@@ -1496,12 +1466,12 @@ export default function App() {
                 <div className="w-11 h-11 bg-[#ffe600] border-2 border-black text-black flex items-center justify-center mb-3.5 shadow-[2px_2px_0px_#000000]">
                   <Database className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-black text-black mb-1 font-mono uppercase">INSPECT REFINERY DATABASE</h3>
-                <p className="text-xs text-black font-mono leading-relaxed">
-                  Query industrial SQLite database directly in chat for API 510 remaining life and ASME corrosion statistics.
+                <h3 className="text-sm font-black text-black mb-1 font-mono uppercase">REFINERY DATABASE</h3>
+                <p className="text-xs text-slate-600 font-mono leading-relaxed">
+                  Inspect equipment records, wall thickness, and corrosion rates.
                 </p>
                 <div className="mt-3.5 pt-3 border-t-2 border-black flex items-center text-xs font-black font-mono text-black space-x-1 uppercase group-hover:translate-x-1 transition-transform">
-                  <span>LAUNCH DB QUERY</span>
+                  <span>OPEN DATABASE</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </div>
               </div>
@@ -1513,12 +1483,12 @@ export default function App() {
                 <div className="w-11 h-11 bg-[#00f0ff] border-2 border-black text-black flex items-center justify-center mb-3.5 shadow-[2px_2px_0px_#000000]">
                   <Image className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-black text-black mb-1 font-mono uppercase">MULTIMODAL P&ID BLUEPRINT</h3>
-                <p className="text-xs text-black font-mono leading-relaxed">
-                  Analyze high-res P&ID diagrams with automated ISA 5.1 tag extraction and ASME B31.3 wall defect flags.
+                <h3 className="text-sm font-black text-black mb-1 font-mono uppercase">P&ID BLUEPRINTS</h3>
+                <p className="text-xs text-slate-600 font-mono leading-relaxed">
+                  Multimodal vision tag extraction and defect detection.
                 </p>
                 <div className="mt-3.5 pt-3 border-t-2 border-black flex items-center text-xs font-black font-mono text-black space-x-1 uppercase group-hover:translate-x-1 transition-transform">
-                  <span>INSPECT P&ID BLUEPRINT</span>
+                  <span>INSPECT BLUEPRINT</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </div>
               </div>
@@ -1530,12 +1500,12 @@ export default function App() {
                 <div className="w-11 h-11 bg-[#00e676] border-2 border-black text-black flex items-center justify-center mb-3.5 shadow-[2px_2px_0px_#000000]">
                   <Gauge className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm font-black text-black mb-1 font-mono uppercase">REFINERY MACHINERY TWIN</h3>
-                <p className="text-xs text-black font-mono leading-relaxed">
-                  3D SCADA telemetry twin with real-time ISO 10816 diagnostics, 200 Hz trip replay, and SIL-3 interlocks.
+                <h3 className="text-sm font-black text-black mb-1 font-mono uppercase">3D DIGITAL TWIN</h3>
+                <p className="text-xs text-slate-600 font-mono leading-relaxed">
+                  Real-time SCADA telemetry, ISO 10816 diagnostics, and trips.
                 </p>
                 <div className="mt-3.5 pt-3 border-t-2 border-black flex items-center text-xs font-black font-mono text-black space-x-1 uppercase group-hover:translate-x-1 transition-transform">
-                  <span>LAUNCH 3D TWIN</span>
+                  <span>LAUNCH TWIN</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </div>
               </div>
@@ -1550,11 +1520,11 @@ export default function App() {
         ══════════════════════════════════════════════════════════════ */}
         {activeTab === 'chat' && (
           <div className="flex-1 flex overflow-hidden">
-            {/* Strict Brutal Chat List Sidebar */}
+            {/* Chat List Sidebar */}
             <div className="w-64 bg-white flex flex-col border-r-[3px] border-black shadow-[4px_0px_0px_#000000] overflow-hidden shrink-0">
               <div className="p-3 flex items-center justify-between border-b-2 border-black bg-[#f5f4ef]">
                 <div className="flex items-center space-x-2">
-                  <span className="text-[11px] font-black font-mono text-black uppercase tracking-wider">SESSION LOGS</span>
+                  <span className="text-[11px] font-black font-mono text-black uppercase tracking-wider">CHATS</span>
                   <span className="text-[10px] bg-black text-[#ffe600] font-mono px-1.5 py-0.2 font-bold">{chats.length}</span>
                 </div>
                 <button onClick={newChat} className="flex items-center space-x-1 px-2.5 py-1 bg-white hover:bg-[#ffe600] text-xs font-black font-mono text-black border-2 border-black shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer" title="Start a New Conversation">
@@ -1564,7 +1534,7 @@ export default function App() {
               </div>
               <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
                 {chats.length === 0 ? (
-                  <p className="text-[11px] font-mono text-slate-500 uppercase p-3 text-center">[ NO STORED CHATS ]</p>
+                  <p className="text-[11px] font-mono text-slate-500 uppercase p-3 text-center">[ NO CHATS ]</p>
                 ) : chats.map((c: any) => {
                   const id = c.chat_id || c[0];
                   const title = c.title || c[1] || 'New Chat';
@@ -1619,7 +1589,7 @@ export default function App() {
                       <div className="ai-thinking">
                         <div className="ai-thinking-orb"></div>
                         <div className="flex flex-col">
-                          <span className="ai-thinking-text">[ INFERENCE IN PROGRESS - ZERO CLOUD EGRESS ]</span>
+                          <span className="ai-thinking-text">[ REASONING ]</span>
                           <div className="ai-thinking-dots mt-2">
                             <span></span><span></span><span></span>
                           </div>
@@ -1649,7 +1619,7 @@ export default function App() {
                 {/* Quick Demo Showcase Bar */}
                 <div className="max-w-3xl mx-auto mb-2 flex items-center flex-wrap gap-2 px-1">
                   <span className="text-[10px] font-black font-mono text-black uppercase tracking-wider mr-1 flex items-center bg-[#ffe600] px-1.5 py-0.5 border border-black shadow-[2px_2px_0px_#000000]">
-                    <Sparkles className="w-3 h-3 text-black mr-1" /> SHOWCASE FILES:
+                    <Sparkles className="w-3 h-3 text-black mr-1" /> EXAMPLES:
                   </span>
                   <button
                     onClick={attachDemoPidBlueprint}
@@ -1657,7 +1627,7 @@ export default function App() {
                     title="Load P&ID Blueprint of Crude Distillation Overhead Train"
                   >
                     <Image className="w-3 h-3 text-black" />
-                    <span>P&ID BLUEPRINT (CDU-301)</span>
+                    <span>P&ID BLUEPRINT</span>
                   </button>
                   <button
                     onClick={attachDemoNdtSurvey}
@@ -1665,7 +1635,7 @@ export default function App() {
                     title="Load Ultrasonic Thickness NDT Survey (ASME B31G)"
                   >
                     <Table className="w-3 h-3 text-black" />
-                    <span>NDT SURVEY (ASME B31G)</span>
+                    <span>NDT SURVEY</span>
                   </button>
                   <button
                     onClick={attachDemoVibrationStream}
@@ -1673,7 +1643,7 @@ export default function App() {
                     title="Load High-Speed Vibration FFT Telemetry (ISO 10816)"
                   >
                     <Activity className="w-3 h-3" />
-                    <span>VIBRATION STREAM (ISO 10816)</span>
+                    <span>VIBRATION</span>
                   </button>
                   <button
                     onClick={attachDemoIncidentReport}
@@ -1681,7 +1651,7 @@ export default function App() {
                     title="Load OSHA 1910 PSM Investigation Dossier"
                   >
                     <FileText className="w-3 h-3 text-black" />
-                    <span>OSHA PSM DOSSIER</span>
+                    <span>INCIDENT DOSSIER</span>
                   </button>
                   <button
                     onClick={attachSampleDb}
@@ -1699,7 +1669,7 @@ export default function App() {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="p-2 bg-white hover:bg-[#ffe600] border-2 border-black text-black shadow-[2px_2px_0px_#000000] transition-colors cursor-pointer"
-                      title="Attach Any Local File"
+                      title="Attach Local File"
                     >
                       <Paperclip className="w-4 h-4" />
                     </button>
@@ -1709,7 +1679,7 @@ export default function App() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Ask sovereign AI, analyze attached DB, or type code task..."
+                    placeholder="Ask AI, query attached database, or type diagnostic query..."
                     className="w-full premium-input resize-none py-3 min-h-[46px] max-h-48 text-sm"
                     rows={1}
                   />
@@ -1737,14 +1707,14 @@ export default function App() {
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-1.5 text-indigo-700 font-bold text-xs tracking-wider">
                   <Sparkles className="w-4 h-4 text-indigo-600" />
-                  <span>SOVEREIGN STUDIO</span>
+                  <span>STUDIO</span>
                 </div>
                 <div className="h-4 w-px bg-slate-200" />
-                {/* Antigravity-Style Open Folder */}
+                {/* Open Folder */}
                 <button
                   onClick={handleOpenFolder}
                   className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-semibold transition-colors cursor-pointer border border-indigo-200/60 shadow-2xs"
-                  title="Open Project Folder (Antigravity Style)"
+                  title="Open Project Folder"
                 >
                   <FolderOpen className="w-3.5 h-3.5 text-indigo-600" />
                   <span>Open Folder</span>
@@ -1762,7 +1732,7 @@ export default function App() {
                 <div className={`flex items-center space-x-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${currentUser.role === 'GRADE_1' ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-700 border-slate-200'
                   }`}>
                   <Shield className="w-3 h-3 text-indigo-600" />
-                  <span>{currentUser.role === 'GRADE_1' ? 'GRADE 1 (READ-ONLY)' : currentUser.role}</span>
+                  <span>{currentUser.role}</span>
                 </div>
 
                 <button
@@ -2028,12 +1998,12 @@ export default function App() {
         {activeTab === 'database' && (() => {
           // Pre-set safe analytical query templates
           const presetQueries = [
-            { label: '🔥 High-Risk Equipment (API 510/570)', sql: "SELECT tag, equipment_type, unit, status, criticality, operating_pressure, metallurgy FROM equipment WHERE criticality = 'CRITICAL' ORDER BY operating_pressure DESC;" },
-            { label: '⚠️ Accelerated Corrosion (>0.2 mm/yr)', sql: "SELECT i.inspection_id, e.tag, e.unit, i.inspection_type, i.corrosion_rate_mm_year, i.remaining_life_years, i.governing_code, i.status FROM inspections i JOIN equipment e ON i.equipment_id = e.equipment_id WHERE i.corrosion_rate_mm_year > 0.2 ORDER BY i.corrosion_rate_mm_year DESC;" },
-            { label: '🚨 Open Critical Work Orders', sql: "SELECT w.wo_number, e.tag, e.unit, emp.name AS technician, w.priority, w.category, w.due_date, w.description, w.status FROM work_orders w JOIN equipment e ON w.equipment_id = e.equipment_id LEFT JOIN employees emp ON w.assigned_to = emp.employee_id WHERE w.priority = 'CRITICAL' AND w.status != 'CLOSED';" },
-            { label: '🏭 Active Plant Sectors & Capacity', sql: "SELECT unit_code, unit_name, refinery_zone, capacity_bpsd, operating_license, lead_engineer FROM plant_units ORDER BY capacity_bpsd DESC;" },
-            { label: '🧪 Critical Chemical Inventory', sql: "SELECT chemical_name, cas_number, unit, storage_tank, quantity_metric_tons, reorder_threshold_tons, hazard_classification FROM chemical_inventory ORDER BY quantity_metric_tons DESC;" },
-            { label: '🛡️ Safety Incidents & Near Misses', sql: "SELECT incident_code, unit, incident_date, severity, incident_type, description, corrective_action, status FROM safety_incidents ORDER BY incident_date DESC;" },
+            { label: '🔥 Critical Assets', sql: "SELECT tag, equipment_type, unit, status, criticality, operating_pressure, metallurgy FROM equipment WHERE criticality = 'CRITICAL' ORDER BY operating_pressure DESC;" },
+            { label: '⚠️ High Corrosion', sql: "SELECT i.inspection_id, e.tag, e.unit, i.inspection_type, i.corrosion_rate_mm_year, i.remaining_life_years, i.governing_code, i.status FROM inspections i JOIN equipment e ON i.equipment_id = e.equipment_id WHERE i.corrosion_rate_mm_year > 0.2 ORDER BY i.corrosion_rate_mm_year DESC;" },
+            { label: '🚨 Open Work Orders', sql: "SELECT w.wo_number, e.tag, e.unit, emp.name AS technician, w.priority, w.category, w.due_date, w.description, w.status FROM work_orders w JOIN equipment e ON w.equipment_id = e.equipment_id LEFT JOIN employees emp ON w.assigned_to = emp.employee_id WHERE w.priority = 'CRITICAL' AND w.status != 'CLOSED';" },
+            { label: '🏭 Plant Sectors', sql: "SELECT unit_code, unit_name, refinery_zone, capacity_bpsd, operating_license, lead_engineer FROM plant_units ORDER BY capacity_bpsd DESC;" },
+            { label: '🧪 Chemicals', sql: "SELECT chemical_name, cas_number, unit, storage_tank, quantity_metric_tons, reorder_threshold_tons, hazard_classification FROM chemical_inventory ORDER BY quantity_metric_tons DESC;" },
+            { label: '🛡️ Safety Incidents', sql: "SELECT incident_code, unit, incident_date, severity, incident_type, description, corrective_action, status FROM safety_incidents ORDER BY incident_date DESC;" },
           ];
 
           // Filter rows client-side if dbSearchQuery is set
@@ -2050,13 +2020,10 @@ export default function App() {
                 <div>
                   <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-1">
                     <Database className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>SQL Presentation Engine (SQLite 3.42)</span>
+                    <span>SQLite Database</span>
                   </div>
                   <h1 className="text-xl font-black text-slate-800 tracking-tight flex items-center space-x-2">
-                    <span>Industrial Database Explorer & Analytics</span>
-                    <span className="text-xs font-mono font-normal text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                      data/demo_db/industrial_demo.db
-                    </span>
+                    <span>Database Explorer</span>
                   </h1>
                 </div>
 
@@ -2414,23 +2381,23 @@ export default function App() {
               <div>
                 <h1 className="text-xl font-black text-slate-800 flex items-center space-x-2">
                   <Users className="w-5 h-5 text-indigo-600" />
-                  <span>Employee Directory & Role-Based Authorization</span>
+                  <span>Users & Access Control</span>
                 </h1>
                 <p className="text-xs text-slate-500 mt-1">
-                  Enforces plant hierarchy: Operator (Grade 1), Engineer (Grade 2), Superintendent (Grade 3), and Admin.
+                  Role-based permissions: Operator, Engineer, Superintendent, Admin.
                 </p>
               </div>
               <button onClick={fetchEmployees} className="premium-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 cursor-pointer">
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh Directory</span>
+                <span>Refresh</span>
               </button>
             </div>
 
             <div className="grid grid-cols-3 gap-6">
               {/* Registration Form (Only ADMIN can register) */}
               <div className="glass-panel p-5">
-                <h3 className="text-sm font-bold text-slate-800 mb-2">Register Employee Account</h3>
-                <p className="text-xs text-slate-500 mb-4">Add authorized plant staff to local SQLite user database.</p>
+                <h3 className="text-sm font-bold text-slate-800 mb-2">New User Account</h3>
+                <p className="text-xs text-slate-500 mb-4">Add authorized user credentials.</p>
 
                 {empStatusMsg && (
                   <div className={`p-2.5 mb-3 rounded-lg text-xs ${empStatusMsg.startsWith('✓') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
@@ -2594,10 +2561,10 @@ export default function App() {
                 <div>
                   <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-1">
                     <Gauge className="w-3.5 h-3.5 text-indigo-600 animate-spin-slow" />
-                    <span>Refinery SCADA & IoT Digital Twin</span>
+                    <span>Digital Twin</span>
                   </div>
                   <h1 className="text-xl font-black text-slate-800 tracking-tight flex items-center space-x-2">
-                    <span>Industrial Machinery & AI Safety Control</span>
+                    <span>Machinery & Safety Control</span>
                   </h1>
                 </div>
 
@@ -2619,15 +2586,15 @@ export default function App() {
                       }
                     }}
                     className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/90 hover:bg-indigo-50 text-indigo-700 border border-slate-200 shadow-2xs text-xs font-bold transition-all cursor-pointer"
-                    title="Export OSHA 1910 / API 510 Shift Handover Dossier"
+                    title="Export Shift Report"
                   >
                     <Download className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Export Shift Report</span>
+                    <span>Export Report</span>
                   </button>
 
                   <button
                     onClick={async () => {
-                      if (!window.confirm('⚠️ CONFIRM PLANT EMERGENCY SHUTDOWN (ESD)? All refinery machinery will be tripped fail-closed.')) return;
+                      if (!window.confirm('⚠️ Confirm Plant Emergency Shutdown (ESD)?')) return;
                       try {
                         const r = await fetch(`${API}/api/machinery/emergency-fleet-trip`, {
                           method: 'POST',
@@ -2644,7 +2611,7 @@ export default function App() {
                         } else {
                           setMachineActionBanner({
                             type: 'blocked',
-                            title: 'Central Policy Blocked Plant ESD',
+                            title: 'Policy Blocked ESD',
                             description: d.message || 'Requires Grade 3 or Admin clearance.'
                           });
                         }
@@ -2653,17 +2620,17 @@ export default function App() {
                       }
                     }}
                     className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-xs text-xs font-bold transition-all cursor-pointer"
-                    title="Plant-Wide Emergency Shutdown (Requires Grade 3 or Admin)"
+                    title="Emergency Shutdown"
                   >
                     <Octagon className="w-3.5 h-3.5 text-white" />
-                    <span>PLANT ESD (Trip All)</span>
+                    <span>Plant ESD</span>
                   </button>
 
                   {/* Clearance Pill */}
-                  <div className="flex items-center space-x-3 bg-white/90 px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                  <div className="flex items-center space-x-2 bg-white/90 px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
                     <Shield className="w-4 h-4 text-indigo-600" />
                     <div>
-                      <div className="text-[9px] uppercase font-bold text-slate-400">Clearance Grade</div>
+                      <div className="text-[9px] uppercase font-bold text-slate-400">Clearance</div>
                       <div className="text-xs font-black text-slate-800">{currentUser.role}</div>
                     </div>
                   </div>
@@ -3429,15 +3396,15 @@ export default function App() {
               <div>
                 <h1 className="text-xl font-black text-slate-800 flex items-center space-x-2">
                   <ClipboardList className="w-5 h-5 text-indigo-600" />
-                  <span>SHA-256 Tamper-Evident Audit Ledger</span>
+                  <span>Audit Ledger</span>
                 </h1>
                 <p className="text-xs text-slate-500 mt-1">
-                  Every user action, tool dispatch, role clearance switch, and blocked command is cryptographically verified.
+                  Cryptographic SHA-256 audit chain of system actions and events.
                 </p>
               </div>
               <button onClick={fetchAuditLogs} className="premium-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 cursor-pointer">
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh Ledger</span>
+                <span>Refresh</span>
               </button>
             </div>
 
@@ -3498,17 +3465,17 @@ export default function App() {
                     <Database className="w-5 h-5 text-black" />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-black font-mono text-black uppercase tracking-tight">MODELS & VRAM ALLOCATION</h1>
-                    <p className="text-xs font-mono text-black font-semibold uppercase">Hardware Memory Budget, LLM Swapping Engine & Specialist Registry</p>
+                    <h1 className="text-2xl font-black font-mono text-black uppercase tracking-tight">MODELS & VRAM</h1>
+                    <p className="text-xs font-mono text-slate-600 font-semibold uppercase">Memory Allocation & Worker Registry</p>
                   </div>
                 </div>
               </div>
               <button
                 onClick={() => { fetchModels(); fetchMetrics(); }}
-                className="px-4 py-2 bg-black hover:bg-[#ffe600] text-white hover:text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-2 border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
+                className="px-3.5 py-1.5 bg-black hover:bg-[#ffe600] text-white hover:text-black text-xs font-black font-mono uppercase tracking-wider flex items-center space-x-1.5 border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5 mr-1" />
-                <span>REFRESH KERNEL</span>
+                <span>REFRESH</span>
               </button>
             </div>
 
