@@ -173,8 +173,20 @@ def create_educational_report():
         r.font.name = F; r.font.size = Pt(8.5); r.font.italic = True; r.font.color.rgb = GREY
         return p
 
+    def embed_image(path, width_in=6.0, caption=None):
+        if os.path.exists(path):
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.space_before = Pt(4)
+            p.paragraph_format.space_after = Pt(2)
+            p.add_run().add_picture(path, width=Inches(width_in))
+            if caption:
+                fig_caption(caption)
+            return True
+        return False
+
     def callout_box(title, paragraphs_list, accent="2563EB", bg="F8FAFC"):
-        """Interactive, visually distinct callout box with a colored left accent border."""
+        """Callout box with colored left accent border."""
         tbl = doc.add_table(rows=1, cols=1)
         tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
         c = tbl.cell(0, 0)
@@ -212,68 +224,20 @@ def create_educational_report():
             r.font.name = F; r.font.size = Pt(9); r.font.color.rgb = BODY
         blank(2)
 
-    def screenshot_placeholder(title, guidance, height_dxa=2600):
-        tbl = doc.add_table(rows=1, cols=1)
-        tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
-        c = tbl.cell(0, 0)
-        c.width = Inches(6.27)
-
-        tcPr = c._tc.get_or_add_tcPr()
-        ns = nsdecls("w")
-        tcPr.append(parse_xml(
-            f'<w:tcBorders {ns}>'
-            f'<w:top w:val="dashed" w:sz="8" w:space="0" w:color="94A3B8"/>'
-            f'<w:bottom w:val="dashed" w:sz="8" w:space="0" w:color="94A3B8"/>'
-            f'<w:left w:val="dashed" w:sz="8" w:space="0" w:color="94A3B8"/>'
-            f'<w:right w:val="dashed" w:sz="8" w:space="0" w:color="94A3B8"/>'
-            f'</w:tcBorders>'
-        ))
-        tcPr.append(parse_xml(f'<w:shd {ns} w:fill="F8FAFC"/>'))
-        tcPr.append(parse_xml(
-            f'<w:tcMar {ns}>'
-            f'<w:top w:w="120" w:type="dxa"/>'
-            f'<w:bottom w:w="120" w:type="dxa"/>'
-            f'<w:left w:w="140" w:type="dxa"/>'
-            f'<w:right w:w="140" w:type="dxa"/>'
-            f'</w:tcMar>'
-        ))
-
-        trPr = tbl.rows[0]._tr.get_or_add_trPr()
-        trPr.append(parse_xml(f'<w:trHeight {ns} w:val="{height_dxa}" w:hRule="atLeast"/>'))
-
-        p = c.paragraphs[0]
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p.paragraph_format.space_before = Pt(20)
-        p.paragraph_format.space_after = Pt(2)
-        r = p.add_run(f"📷  {title}\n")
-        r.font.name = F
-        r.font.bold = True
-        r.font.size = Pt(10)
-        r.font.color.rgb = RGBColor(71, 85, 105)
-
-        r2 = p.add_run(guidance)
-        r2.font.name = F
-        r2.font.italic = True
-        r2.font.size = Pt(8.5)
-        r2.font.color.rgb = RGBColor(148, 163, 184)
-        p.paragraph_format.space_after = Pt(20)
-
-        return tbl
-
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 1 ─ COVER PAGE (CENTER-ORIENTED + HOD & SUPERVISOR COLUMNS)
+    # PAGE 1 ─ COVER PAGE (CENTER-ORIENTED + LOCAL LLM TITLES + APPROVAL BLOCK)
     # ══════════════════════════════════════════════════════════════════════════
-    blank(30)
+    blank(28)
 
     # Top badge centered
     label("PROJECT REPORT : AI LAB 2026", size=11, color=GREY, align=WD_ALIGN_PARAGRAPH.CENTER, after=14)
 
-    # Main Heading centered
-    big("Sovereign Industrial\nAgentic AI Workbench", size=32, align=WD_ALIGN_PARAGRAPH.CENTER, after=8)
-    big("Based on Multimodal Orchestration &\nOpen Weight Local LLMs", size=15, color=GREY, align=WD_ALIGN_PARAGRAPH.CENTER, after=12)
+    # Main Heading centered (Emphasizing Local LLMs)
+    big("Local LLM-Based Sovereign\nIndustrial AI Workbench", size=31, align=WD_ALIGN_PARAGRAPH.CENTER, after=8)
+    big("Dynamic Model Lifecycle, Multimodal Orchestration &\nDeterministic Safety Interlocks", size=14, color=GREY, align=WD_ALIGN_PARAGRAPH.CENTER, after=12)
 
     # Subtitle centered
-    label("Air-Gapped Autonomous Agentic Intelligence\nfor Critical SCADA Infrastructure", size=10.5, color=GREY, align=WD_ALIGN_PARAGRAPH.CENTER, after=18)
+    label("Air-Gapped Autonomous LLM Intelligence\nfor Critical On-Premise Infrastructure", size=10.5, color=GREY, align=WD_ALIGN_PARAGRAPH.CENTER, after=16)
 
     # Centered divider line
     p_line = doc.add_paragraph()
@@ -310,7 +274,7 @@ def create_educational_report():
 
     p_repo = doc.add_paragraph()
     p_repo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_repo.paragraph_format.space_before = Pt(0); p_repo.paragraph_format.space_after = Pt(30)
+    p_repo.paragraph_format.space_before = Pt(0); p_repo.paragraph_format.space_after = Pt(28)
     r_repo = p_repo.add_run("GitHub Repository: https://github.com/mukuld1511-bit/Locall-Agentic-AI-Workbench")
     r_repo.font.name = F; r_repo.font.size = Pt(8.5); r_repo.font.color.rgb = GREY
 
@@ -351,37 +315,34 @@ def create_educational_report():
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 2 ─ WHAT IS THIS PROJECT? (EDUCATIONAL INTRO WITH VIVID ANALOGY)
+    # PAGE 2 ─ WHAT IS THIS PROJECT? (THE LOCAL LLM BREAKTHROUGH)
     # ══════════════════════════════════════════════════════════════════════════
     heading("What Is This Project?", size=26, before=6)
     divider()
 
     body(
-        "Imagine standing inside the control room of a high-capacity petroleum refinery. Around you, heavy centrifugal "
-        "compressors rotate at 12,000 RPM, pipelines pump flammable crude oil at 140 barG of pressure, and distillation "
-        "columns operate at scorching temperatures exceeding 400°C. Every millisecond, hundreds of vibration, pressure, "
-        "and flow sensors broadcast measurements across industrial SCADA networks. A single mechanical oversight—such as a "
-        "bearing defect going unnoticed on a Wet Gas Compressor—can lead to disastrous vapor cloud explosions, toxic emissions, "
-        "and millions of dollars in catastrophic downtime."
+        "Modern artificial intelligence is dominated by massive cloud-hosted Large Language Models (LLMs). While models like "
+        "GPT-4 or Claude excel at general conversational tasks, their fundamental dependency on public internet infrastructure "
+        "renders them unusable for air-gapped critical facilities. Refineries, power grids, chemical plants, and defense sites "
+        "are legally mandated to operate under zero-cloud-egress constraints (NIST SP 800-82, IEC 62443). Exposing operational "
+        "telemetry to third-party cloud servers introduces grave national cyber-physical security risks."
     )
     body(
-        "Modern control rooms desperately need intelligent assistants to make sense of this tidal wave of sensor telemetry, "
-        "diagnose subtle mechanical degradation, and assist operators through emergency triage procedures. However, conventional "
-        "cloud-based AI models (such as ChatGPT or Claude) cannot be used in these environments. These plants are legally "
-        "mandated to be air-gapped—physically isolated from the public internet—because industrial telemetry is national critical "
-        "infrastructure data, and exposing it to external cloud servers introduces catastrophic cyber-physical sabotage risks."
+        "Industrial SCADA and refinery operations serve as the rigorous evaluation testbed for this project, but the core "
+        "computer science breakthrough is solving the Local LLM Memory Wall: orchestrating multiple specialized open-weight "
+        "LLMs on a single consumer GPU workstation without running out of memory, freezing during model transitions, or hallucinating "
+        "dangerous control commands."
     )
 
     callout_box(
-        "💡 The Core Concept: The Chief Engineer in a Box",
+        "💡 The Core Engineering: Overcoming the Local LLM Memory Wall",
         [
-            "This project, the Sovereign Industrial Agentic AI Workbench, creates an on-premise, zero-internet AI Operating System. "
-            "Think of it as having a senior chief diagnostic engineer who has memorized every equipment manual, piping blueprint, "
-            "and ISO vibration standard, sitting directly beside the operator on a standard desktop workstation.",
-            "It runs 100% locally on a single GPU workstation without sending a single byte outside the plant walls. It combines "
-            "quantized local language models, multimodal computer vision, deterministic safety filters, and interactive 3D WebGL "
-            "digital twins into an integrated, fail-closed platform.",
-            "Official Open-Source Repository: https://github.com/mukuld1511-bit/Locall-Agentic-AI-Workbench"
+            "Standard consumer workstations are constrained to 8–16 GB of VRAM. A single unquantized 7B parameter LLM consumes over "
+            "14 GB of memory, making concurrent multi-model execution impossible on standard commercial hardware.",
+            "This project develops an on-premise Dynamic Model Lifecycle Engine: a lightweight 500M intent router remains permanently "
+            "resident in VRAM, while specialized 3B code-reasoning and 3B multimodal vision LLMs are dynamically loaded, executed, and "
+            "unloaded in under 400 milliseconds using memory-mapped zero-copy tensors.",
+            "Open-Source Codebase: https://github.com/mukuld1511-bit/Locall-Agentic-AI-Workbench"
         ],
         accent="2563EB", bg="EFF6FF"
     )
@@ -389,68 +350,66 @@ def create_educational_report():
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 3 ─ THE PROBLEM (WHY INDUSTRIAL PLANTS CANNOT USE CLOUD AI)
+    # PAGE 3 ─ THE PROBLEM (WHY LOCAL LLMs ARE HARD TO MANAGE)
     # ══════════════════════════════════════════════════════════════════════════
     heading("The Problem", size=26, before=6)
-    label("Why can't refineries simply connect to ChatGPT or cloud AI?", size=11, color=GREY, after=4)
+    label("Why running specialized LLMs locally on standard hardware is exceptionally difficult.", size=11, color=GREY, after=4)
     divider()
 
-    subheading("1. National Data Sovereignty & Strict Air-Gap Mandates")
+    subheading("1. The VRAM Memory Ceiling & Multi-Model Incompatibility")
     body(
-        "Refinery piping diagrams, operating temperatures, and safety trip thresholds are classified as critical national "
-        "infrastructure under standards like NIST SP 800-82 and ISA/IEC 62443. Connecting plant SCADA buses to third-party cloud "
-        "servers exposes the facility to foreign state-sponsored cyber espionage, remote backdoors, and extraterritorial data subpoenas."
+        "Control rooms operate commodity workstations with 8 GB VRAM (e.g. NVIDIA RTX 3060). Complex operational intelligence "
+        "demands three distinct model capabilities: intent routing, mathematical code generation, and visual blueprint inspection. "
+        "Loading all three models simultaneously exhausts GPU memory immediately, causing fatal Out-Of-Memory (OOM) crashes."
     )
 
-    subheading("2. AI Hallucinations Can Cause Lethal Physical Disasters")
+    subheading("2. The Model Swapping Latency Bottleneck")
     body(
-        "Generative language models are inherently probabilistic and frequently hallucinate. In an office setting, a hallucinated "
-        "answer is a minor inconvenience. In a chemical plant, if an AI assistant hallucinates an emergency bypass command "
-        "or incorrectly suggests closing a relief valve during a pressure surge, line rupture occurs within seconds. AI commands "
-        "must be physically constrained by deterministic, mathematical safety interlocks that cannot be bypassed."
+        "To avoid OOM errors, models must be swapped in and out of GPU memory dynamically. However, naive PyTorch or HuggingFace "
+        "loaders take 5 to 12 seconds to load model weights from disk to VRAM. In high-criticality environments where sensor alerts "
+        "refresh every 100ms, multi-second loading delays create unacceptable operator latency."
     )
 
     callout_box(
-        "⚠️ Concrete Example: The Difference Between Probabilistic vs Deterministic Safety",
+        "⚠️ The Probabilistic LLM Hazard: Hallucination in Critical Systems",
         [
-            "Suppose an operator asks: 'How do I purge the heavy crude line on Pump 301A?'",
-            "A probabilistic cloud LLM might generate: 'To clear the blockage, open emergency bypass valve XV-3012.' But if line "
-            "pressure exceeds 45 barG, opening that valve will vent flammable hydrocarbons into the furnace atmosphere! "
-            "In our workbench, the Deterministic AST Safety Filter intercepts the command, checks the physical pressure interlock, "
-            "verifies operator authorization, and blocks the command with 100% mathematical certainty."
+            "Language models are probabilistic token predictors. In an office setting, a hallucinated sentence is harmless. In an industrial "
+            "setting, if an LLM hallucinates an emergency bypass command or invents an unauthorized valve override, catastrophic rupture occurs.",
+            "The engineering problem: How do we harness the cognitive reasoning of LLMs while guaranteeing 100% mathematical, deterministic safety? "
+            "The answer is a non-bypassable Abstract Syntax Tree (AST) parser that acts as a compile-time safety cage."
         ],
         accent="DC2626", bg="FEF2F2"
     )
 
-    subheading("3. Tight Hardware & GPU Memory Constraints")
+    subheading("3. Multimodal Disconnect in Offline Environments")
     body(
-        "Control rooms operate standard commercial workstations with 8–16 GB of VRAM. Fitting three independent deep learning "
-        "models—an intent classifier, a code reasoning model, and a vision inspector—into this restricted memory footprint while "
-        "guaranteeing real-time sub-second response times has historically been an unsolved engineering hurdle."
+        "Industrial diagnostics require interpreting scanned P&ID blueprints, piping diagrams, and vibration spectrum plots alongside text. "
+        "Commercial multimodal APIs require internet connectivity; running local vision-language models (such as Qwen2.5-VL) within an 8 GB budget "
+        "demands aggressive quantization and dedicated lifecycle management."
     )
 
-    subheading("4. Tribal Knowledge Loss & Operator Alarm Floods")
+    subheading("4. Loss of Tribal Knowledge & Cognitive Alarm Floods")
     body(
-        "Senior plant engineers who learned to recognize mechanical unbalance by the subtle acoustic pitch of a pump are retiring. "
-        "Concurrently, junior operators face alarm floods of over 40 alerts per minute during plant upset conditions. Without "
-        "intelligent automated synthesis, operators experience cognitive overload, leading to delayed emergency response."
+        "Senior diagnostic engineers are retiring, taking decades of intuitive troubleshooting knowledge with them. Concurrently, "
+        "operators face alarm floods exceeding 40 alerts per minute during plant upsets. An air-gapped local LLM assistant is required to synthesize "
+        "complex telemetry into actionable, clear recommendations without cloud dependence."
     )
 
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 4 ─ THE SOLUTION (TRI-MODEL LOCAL ARCHITECTURE + FLOWCHART)
+    # PAGE 4 ─ THE SOLUTION (TRI-MODEL LOCAL LLM ARCHITECTURE)
     # ══════════════════════════════════════════════════════════════════════════
     heading("The Solution", size=26, before=6)
-    label("Three specialized local AI models. One workstation. Zero internet.", size=11, color=GREY, after=4)
+    label("Hierarchical tri-model orchestration. Dynamic VRAM swapping. Zero internet.", size=11, color=GREY, after=4)
     divider()
 
     body(
-        "Rather than relying on an unmanageable 70-billion parameter cloud monolith, the workbench orchestrates three specialized "
-        "open-weight models coordinated inside a strict deterministic safety sandbox:"
+        "Rather than relying on an unmanageable cloud monolith, the workbench orchestrates three specialized open-weight "
+        "models inside an optimized C++ inference core governed by a deterministic safety interlock:"
     )
 
-    # ── DIAGRAM 1: WORD-BASED TRI-MODEL ORCHESTRATION FLOWCHART ────────────────
+    # ── DIAGRAM 1: TRI-MODEL ORCHESTRATION FLOWCHART ──────────────────────────
     t_flow1 = doc.add_table(rows=10, cols=2)
     t_flow1.alignment = WD_TABLE_ALIGNMENT.CENTER
 
@@ -460,7 +419,7 @@ def create_educational_report():
     p = c0.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = p.add_run("OPERATOR CONSOLE & SCADA TELEMETRY BUS\n")
     r.font.name = F; r.font.bold = True; r.font.size = Pt(9.5); r.font.color.rgb = INK
-    r2 = p.add_run("Real-Time Vibration & Pressure Feeds (100ms)  ·  Natural Language Inquiries  ·  P&ID Scans")
+    r2 = p.add_run("Real-Time Telemetry Feeds (100ms)  ·  Natural Language Inquiries  ·  Scanned P&ID Blueprints")
     r2.font.name = F; r2.font.size = Pt(8.5); r2.font.color.rgb = BODY
 
     # Row 1: Merged Arrow
@@ -475,9 +434,9 @@ def create_educational_report():
     c2 = t_flow1.cell(2, 0).merge(t_flow1.cell(2, 1))
     set_cell_box(c2, bg="EFF6FF", border="2563EB", top_pad=60, bot_pad=60)
     p = c2.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("STAGE 1: 500M ORGANIZING INTENT ROUTER\n")
+    r = p.add_run("STAGE 1: 500M RESIDENT INTENT ROUTER (0.42 GB VRAM)\n")
     r.font.name = F; r.font.bold = True; r.font.size = Pt(9.5); r.font.color.rgb = INK
-    r2 = p.add_run("Sub-35ms Intent Classification  ·  Dynamic VRAM Swapping Dispatch  ·  Safety Pre-Filter")
+    r2 = p.add_run("Sub-35ms Intent Classification  ·  Dynamic VRAM Swapping Dispatch  ·  Zero GPU Memory Leaks")
     r2.font.name = F; r2.font.size = Pt(8.5); r2.font.color.rgb = BODY
 
     # Row 3: Two Branch Arrows
@@ -485,28 +444,28 @@ def create_educational_report():
     clear_cell_borders(c3a); clear_cell_borders(c3b)
     p = c3a.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(1); p.paragraph_format.space_after = Pt(1)
-    r = p.add_run("▼  (Code / Diagnostics)")
+    r = p.add_run("▼  [Code / Telemetry Diagnostics]")
     r.font.name = F; r.font.bold = True; r.font.size = Pt(8); r.font.color.rgb = GREY
 
     p = c3b.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(1); p.paragraph_format.space_after = Pt(1)
-    r = p.add_run("▼  (P&ID / Thermal Vision)")
+    r = p.add_run("▼  [P&ID / Visual Inspection]")
     r.font.name = F; r.font.bold = True; r.font.size = Pt(8); r.font.color.rgb = GREY
 
-    # Row 4: Two Parallel Engines
+    # Row 4: Two Parallel Engines (Dynamic Swapping)
     c4a, c4b = t_flow1.cell(4, 0), t_flow1.cell(4, 1)
     set_cell_box(c4a, bg="F8FAFC", border="94A3B8", top_pad=50, bot_pad=50)
     p = c4a.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("STAGE 2A: REASONING ENGINE\n")
+    r = p.add_run("STAGE 2A: REASONING LLM\n")
     r.font.name = F; r.font.bold = True; r.font.size = Pt(9); r.font.color.rgb = INK
-    r2 = p.add_run("3B Code & Math LLM\nSQL Generation · FFT Spectrum\nSandboxed Python Diagnostics")
+    r2 = p.add_run("3B Code & Math LLM (Q4_K_M)\nHot-Swapped into VRAM (380ms)\nPython Sandbox & SQL Synthesis")
     r2.font.name = F; r2.font.size = Pt(8); r2.font.color.rgb = BODY
 
     set_cell_box(c4b, bg="F8FAFC", border="94A3B8", top_pad=50, bot_pad=50)
     p = c4b.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("STAGE 2B: VISION INSPECTOR\n")
+    r = p.add_run("STAGE 2B: MULTIMODAL VISION LLM\n")
     r.font.name = F; r.font.bold = True; r.font.size = Pt(9); r.font.color.rgb = INK
-    r2 = p.add_run("3B Qwen2.5-VL Multimodal\nP&ID Valve Tag OCR\nCorrosion & Hotspot Detection")
+    r2 = p.add_run("3B Qwen2.5-VL Multimodal (Q4_K_M)\nHot-Swapped into VRAM (390ms)\nP&ID Valve OCR & Defect Flags")
     r2.font.name = F; r2.font.size = Pt(8); r2.font.color.rgb = BODY
 
     # Row 5: Merge Connectors
@@ -534,7 +493,7 @@ def create_educational_report():
     c7 = t_flow1.cell(7, 0).merge(t_flow1.cell(7, 1))
     set_cell_box(c7, bg="FEF2F2", border="DC2626", top_pad=60, bot_pad=60)
     p = c7.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("STAGE 3: DETERMINISTIC AST SAFETY CAGE & 4-TIER RBAC\n")
+    r = p.add_run("STAGE 3: DETERMINISTIC AST SAFETY CAGE & 4-TIER RBAC GATE\n")
     r.font.name = F; r.font.bold = True; r.font.size = Pt(9.5); r.font.color.rgb = INK
     r2 = p.add_run("AST Token Whitelist  ·  Drop/Trip Blocked (Fail-Closed)  ·  Cryptographic Clearance Gate")
     r2.font.name = F; r2.font.size = Pt(8.5); r2.font.color.rgb = BODY
@@ -551,55 +510,50 @@ def create_educational_report():
     c9 = t_flow1.cell(9, 0).merge(t_flow1.cell(9, 1))
     set_cell_box(c9, bg="F0FDF4", border="16A34A", top_pad=60, bot_pad=60)
     p = c9.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("STAGE 4: PLANT DIGITAL TWIN & FORENSIC AUDIT LEDGER\n")
+    r = p.add_run("STAGE 4: 3D DIGITAL TWIN SYNCHRONIZATION & FORENSIC LEDGER\n")
     r.font.name = F; r.font.bold = True; r.font.size = Pt(9.5); r.font.color.rgb = INK
-    r2 = p.add_run("Three.js WebGL 3D Visualization (60 FPS)  ·  Append-Only SHA-256 Chained Hash Ledger")
+    r2 = p.add_run("Three.js WebGL Parametric CAD Twin (60 FPS)  ·  Append-Only SHA-256 Chained Hash Ledger")
     r2.font.name = F; r2.font.size = Pt(8.5); r2.font.color.rgb = BODY
 
-    fig_caption("Figure 1: Tri-Model Local Neural Orchestration and Deterministic Safety Interlock Flowchart.")
+    fig_caption("Figure 1: Tri-Model Local LLM Orchestration, Dynamic VRAM Swapping Pool, and Deterministic AST Safety Interlock Flowchart.")
 
     subheading("The Deterministic Safety Guarantee")
     body_bold_inline([
-        ("No AI model can directly actuate plant machinery. ", True),
-        ("Every proposed command passes through an Abstract Syntax Tree (AST) parser. A 4-tier Role-Based Access Control "
-         "(RBAC) gateway verifies cryptographic credentials, guaranteeing that Grade 1 operators cannot trigger high-risk "
-         "trips, while approved actions are recorded into an append-only SHA-256 ledger.", False)
+        ("No LLM can directly actuate plant machinery. ", True),
+        ("Every proposed command generated by an LLM is intercepted and passed through an Abstract Syntax Tree (AST) parser. "
+         "A 4-tier Role-Based Access Control (RBAC) gateway verifies cryptographic credentials, ensuring that Grade 1 operators "
+         "cannot trigger destructive commands, while approved actions are sealed into an immutable SHA-256 audit ledger.", False)
     ])
 
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 5 ─ FEASIBILITY (+ VRAM BUDGET DONUT CHART & MATH BREAKDOWN)
+    # PAGE 5 ─ FEASIBILITY (4-BIT QUANTIZATION & VRAM BUDGET DONUT CHART)
     # ══════════════════════════════════════════════════════════════════════════
     heading("Feasibility", size=26, before=6)
-    label("How can three advanced neural models run on a single workstation?", size=11, color=GREY, after=4)
+    label("How can three advanced neural models run on a standard 8 GB workstation?", size=11, color=GREY, after=4)
     divider()
 
-    subheading("Technical Feasibility — 4-Bit GGUF Quantization")
+    subheading("Technical Feasibility — 4-Bit GGUF Quantization & Zero-Copy Swapping")
     body(
-        "Standard neural network weights are represented as 32-bit floating-point numbers. Through 4-bit integer quantization "
-        "(Q4_K_M within the open-standard GGUF format), each weight is compressed by ~75% with under 0.8% loss in diagnostic accuracy. "
+        "Standard LLM weights are stored as 32-bit floating-point tensors. Through 4-bit integer quantization (Q4_K_M within the "
+        "open-standard GGUF format), model weights are compressed by ~75% with under 0.8% loss in benchmark reasoning accuracy. "
         "The C++ inference engine (llama.cpp) utilizes native CUDA tensor cores to deliver 42 tokens/second on an ordinary "
-        "NVIDIA RTX 3060 graphics card."
+        "NVIDIA RTX 3060 graphics card, completely bypassing Python's Global Interpreter Lock (GIL)."
     )
 
-    # Embed VRAM Budget Donut Chart if available
-    if os.path.exists("chart_vram_donut.png"):
-        p_ch = doc.add_paragraph()
-        p_ch.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_ch.paragraph_format.space_before = Pt(4)
-        p_ch.paragraph_format.space_after = Pt(2)
-        p_ch.add_run().add_picture("chart_vram_donut.png", width=Inches(3.4))
-        fig_caption("Figure: Consumer 8 GB VRAM Budget — Measured Peak Allocation (6.84 GB / 8.0 GB).")
+    # Embed VRAM Budget Donut Chart
+    vram_chart = "extracted_user_images/image1.png" if os.path.exists("extracted_user_images/image1.png") else "chart_vram_donut.png"
+    embed_image(vram_chart, width_in=3.4, caption="Figure: Consumer 8 GB VRAM Budget — Measured Peak Allocation (6.84 GB / 8.0 GB).")
 
     callout_box(
         "📐 The Mathematical VRAM Budget Breakdown",
         [
-            "• 500M Intent Router (resident): 0.42 GB VRAM",
-            "• 3B Reasoning / Vision Model (Q4_K_M): 2.15 GB VRAM (hot swapped dynamically)",
-            "• Context Window & KV Cache (4,096 tokens): 1.85 GB VRAM",
-            "• WebGL Three.js 3D Digital Twin & Display Buffer: 1.12 GB VRAM",
-            "• OS & Framework Headroom: 1.30 GB VRAM",
+            "• 500M Intent Router (resident in VRAM): 0.42 GB",
+            "• 3B Reasoning / Vision Model (Q4_K_M, hot-swapped): 2.15 GB",
+            "• Context Window & KV Cache (4,096 tokens): 1.85 GB",
+            "• WebGL Three.js 3D Digital Twin & Display Buffers: 1.12 GB",
+            "• OS & CUDA Driver Headroom: 1.30 GB",
             "• Total Peak Measured Allocation: 6.84 GB — safely leaving 1.16 GB of buffer on an 8 GB consumer GPU!"
         ],
         accent="16A34A", bg="F0FDF4"
@@ -608,28 +562,28 @@ def create_educational_report():
     subheading("Operational & Economic Feasibility")
     body(
         "The system is packaged as an offline Electron desktop bundle requiring zero Docker or cloud configuration. "
-        "Financially, an unexpected trip of a single wet gas compressor costs ~$450,000 per hour in unrefined crude throughput. "
-        "By detecting subtle bearing degradation 14 to 21 days earlier than manual inspections, the system pays for itself in one incident."
+        "Financially, an unexpected trip of a single critical machine costs ~$450,000 per hour in lost throughput. "
+        "By detecting subtle bearing degradation 14 to 21 days earlier through automated local LLM spectral synthesis, "
+        "the system pays for itself in a single prevented incident."
     )
 
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 6 ─ HOW IT WORKS (THE ORCHESTRA ANALOGY & METHODOLOGY FLOWCHART)
+    # PAGE 6 ─ HOW IT WORKS (FOUR-PHASE CLOSED-LOOP METHODOLOGY)
     # ══════════════════════════════════════════════════════════════════════════
     heading("How It Works", size=26, before=6)
     label("A continuous four-phase supervisory closed loop.", size=11, color=GREY, after=4)
     divider()
 
     callout_box(
-        "🎵 The Orchestra Analogy: How FFT Decodes Machine Vibration",
+        "🎵 Decoding Machine Vibration with Fast Fourier Transform (FFT)",
         [
-            "When you listen to a symphony, your brain easily isolates the deep rumble of the bass drum from the high screech of a violin. "
-            "Similarly, an industrial vibration accelerometer records one chaotic, noisy wave. Fast Fourier Transform (FFT) mathematically "
-            "decomposes that wave into pure acoustic frequencies:",
+            "An industrial vibration accelerometer records complex, noisy physical waveforms. Fast Fourier Transform (FFT) mathematically "
+            "decomposes that wave into pure acoustic harmonics, which our Reasoning LLM analyzes in real time:",
             "• 1X Harmonic (Shaft RPM): Indicates physical mass unbalance (e.g. eroded impeller vanes).",
-            "• 2X Harmonic: Indicates shaft-to-motor angular or parallel misalignment.",
-            "• High-Frequency Peaks (BPFO/BPFI): Reveals microscopic cracks on bearing balls or raceways long before heat develops!"
+            "• 2X Harmonic: Indicates shaft-to-motor angular or parallel mechanical misalignment.",
+            "• High-Frequency Peaks (BPFO/BPFI): Reveals microscopic cracks on bearing raceways long before heat develops!"
         ],
         accent="2563EB", bg="EFF6FF"
     )
@@ -642,7 +596,7 @@ def create_educational_report():
         ("PHASE 1: 100ms TELEMETRY & FFT SIGNAL DECOMPOSITION",
          "Continuous Polling: Pump 301A, Compressor 102, Blower 401, Turbo 205\n8,192-point Fast Fourier Transform (FFT)  ·  1X/2X Harmonics  ·  ISO 10816-3 Zone Classification",
          "F8FAFC", "475569"),
-        ("PHASE 2: AIR-GAPPED MULTI-MODEL NEURAL REASONING",
+        ("PHASE 2: AIR-GAPPED MULTI-MODEL LOCAL LLM REASONING",
          "500M Router Latency <35ms  ·  Dynamic VRAM Swapping (<400ms)  ·  3B Reasoning / 3B Vision Models\nZero Internet Dependencies  ·  100% On-Premise Execution on Standard 8GB VRAM Workstation",
          "EFF6FF", "2563EB"),
         ("PHASE 3: DETERMINISTIC AST SAFETY & RBAC INTERLOCK",
@@ -677,10 +631,10 @@ def create_educational_report():
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 7 ─ TECHNOLOGY STACK (DETAILED ARCHITECTURAL COMPONENT TABLE)
+    # PAGE 7 ─ TECHNOLOGY STACK (OPTIMIZED FOR LOCAL LLM INFERENCE)
     # ══════════════════════════════════════════════════════════════════════════
     heading("Technology Stack", size=26, before=6)
-    label("Every component, and why it was chosen.", size=11, color=GREY, after=4)
+    label("Every component engineered for local execution efficiency.", size=11, color=GREY, after=4)
     divider()
 
     tbl = doc.add_table(rows=7, cols=3)
@@ -691,9 +645,9 @@ def create_educational_report():
         r = p.add_run(h); r.font.name = F; r.font.size = Pt(9.5); r.font.bold = True; r.font.color.rgb = INK
 
     rows = [
-        ("Neural Inference", "llama.cpp, GGUF, CUDA 12.1, PyTorch",
+        ("LLM Inference Core", "llama.cpp, GGUF, CUDA 12.1, PyTorch",
          "C++ inference engine running 4-bit quantized models at 42 tok/s on single GPUs without Python GIL overhead."),
-        ("Backend API", "Python 3.10+, FastAPI, Uvicorn, WebSockets",
+        ("Backend Orchestrator", "Python 3.10+, FastAPI, Uvicorn, WebSockets",
          "Asynchronous event loop multiplexes 100ms SCADA streams to frontend clients with sub-5ms socket latency."),
         ("Signal Processing", "NumPy, SciPy, Butterworth DSP",
          "Vectorized 8,192-point FFT computes spectral harmonics in 3.8ms, well inside the 100ms SCADA refresh cycle."),
@@ -715,13 +669,13 @@ def create_educational_report():
     blank(8)
     subheading("Deployment Portability")
     bullet("Industrial Workstations: ", "Validated on NVIDIA RTX 3060, 4060, and 4090 GPUs (Windows 10/11 Enterprise).")
-    bullet("NVIDIA DGX Servers: ", "Runs bare-metal on enterprise Ubuntu DGX Spark systems with zero virtualization overhead.")
-    bullet("Zero-Egress Guarantee: ", "Operates indefinitely inside Faraday cages or air-gapped SCADA subnets without DNS/internet.")
+    bullet("NVIDIA DGX Enterprise: ", "Runs bare-metal on Ubuntu DGX Spark servers with zero virtualization overhead.")
+    bullet("Zero-Egress Guarantee: ", "Operates indefinitely inside Faraday cages or air-gapped industrial subnets without DNS or internet.")
 
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 8 ─ ARCHITECTURE (FIVE FAIL-SAFE LAYERS & STACK DIAGRAM)
+    # PAGE 8 ─ ARCHITECTURE (FIVE FAIL-SAFE DECOUPLED LAYERS)
     # ══════════════════════════════════════════════════════════════════════════
     heading("Architecture", size=26, before=6)
     label("Five independent layers. If one fails, the others keep running.", size=11, color=GREY, after=4)
@@ -729,7 +683,7 @@ def create_educational_report():
 
     body(
         "The architecture is organized into five decoupled, fail-safe layers. Each layer has an isolated "
-        "operational boundary, guaranteeing that high-level neural inference cannot destabilize telemetry or safety gates:"
+        "process boundary, guaranteeing that high-level LLM swapping or inference cannot destabilize telemetry or safety gates:"
     )
 
     # ── DIAGRAM 3: 5-LAYER STACK ARCHITECTURE DIAGRAM ──────────────────────────
@@ -778,10 +732,10 @@ def create_educational_report():
     callout_box(
         "🛡️ The 'Fail-Closed' Isolation Principle",
         [
-            "In critical infrastructure engineering, systems must be 'fail-closed' (default deny). "
-            "If Layer 2 (the neural model) suffers an out-of-memory exception or is reloading, Layer 1 (Telemetry) "
+            "In safety-critical engineering, systems must be 'fail-closed' (default deny). "
+            "If Layer 2 (the LLM inference engine) suffers an out-of-memory exception or is reloading, Layer 1 (Telemetry) "
             "and Layer 3 (Safety Interlocks) continue executing uninterrupted in separate memory processes. "
-            "The physical plant never loses emergency protection, even if the AI is undergoing model swapping."
+            "The physical machinery never loses emergency protection, even during model swapping."
         ],
         accent="DC2626", bg="FEF2F2"
     )
@@ -789,18 +743,18 @@ def create_educational_report():
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 9 ─ REAL-WORLD USAGE (INTERACTIVE OPERATOR WALKTHROUGHS)
+    # PAGE 9 ─ REAL-WORLD USAGE (LOCAL LLM IN ACTION)
     # ══════════════════════════════════════════════════════════════════════════
     heading("Real-World Usage", size=26, before=6)
-    label("Three concrete operational scenarios from an actual refinery control room.", size=11, color=GREY, after=4)
+    label("Three concrete operational scenarios evaluating local LLM performance.", size=11, color=GREY, after=4)
     divider()
 
     callout_box(
         "💬 Scenario 1: Interactive Vibration Anomaly Triage",
         [
             "• Operator Input: 'Why is Crude Pump 301A vibrating, and is it safe to keep running?'",
-            "• Autonomous System Actions: 500M Router classifies intent -> retrieves 100ms vibration buffer -> runs FFT spectral decomposition -> detects dominant 1X peak at 4.2 mm/s RMS (ISO Zone C — Alarm).",
-            "• Workbench Output: 'Vibration is elevated at 4.2 mm/s RMS (Zone C). Dominant 1X harmonic indicates rotor unbalance caused by impeller erosion. Recommendation: Safe to continue operation under 80% throttle for 14 days. Drafted maintenance work order #WO-301A for next scheduled turnaround.'"
+            "• Autonomous LLM Actions: 500M Router classifies intent -> retrieves 100ms vibration buffer -> runs FFT spectral decomposition -> detects dominant 1X peak at 4.2 mm/s RMS (ISO Zone C — Alarm).",
+            "• Output: 'Vibration is elevated at 4.2 mm/s RMS (Zone C). Dominant 1X harmonic indicates rotor unbalance caused by impeller erosion. Recommendation: Safe to continue operation under 80% throttle for 14 days. Drafted maintenance work order #WO-301A for next turnaround.'"
         ],
         accent="2563EB", bg="EFF6FF"
     )
@@ -808,9 +762,9 @@ def create_educational_report():
     callout_box(
         "🔍 Scenario 2: Multimodal P&ID Blueprint Verification",
         [
-            "• Maintenance Engineer Action: Drops a 40-year-old scanned PDF blueprint of Crude Distillation Unit (CDU-301) into console.",
-            "• Vision Model (Qwen2.5-VL) Actions: Scans image -> extracts 18 valve tags (XV-3012, PCV-4401) -> traces bypass loops -> highlights corrosion risk zone.",
-            "• Workbench Output: 'Detected isolation valve XV-3012 normally closed. Caution: Bypass line 4-HC-201 lacks double-block-and-bleed isolation required under ASME B31.3. Analysis completed in 7.8 seconds (vs 45 mins manual engineering audit).'"
+            "• Maintenance Engineer Action: Drops scanned PDF blueprint of Crude Distillation Unit (CDU-301) into console.",
+            "• Vision LLM (Qwen2.5-VL) Actions: Scans image -> extracts 18 valve tags (XV-3012, PCV-4401) -> traces bypass loops -> highlights corrosion risk zone.",
+            "• Output: 'Detected isolation valve XV-3012 normally closed. Caution: Bypass line lacks double-block-and-bleed isolation required under ASME B31.3. Analysis completed in 7.8 seconds (vs 45 mins manual audit).'"
         ],
         accent="16A34A", bg="F0FDF4"
     )
@@ -828,7 +782,7 @@ def create_educational_report():
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 10 ─ WHY THIS MATTERS (SAFETY GUARANTEES + DECISION FLOWCHART)
+    # PAGE 10 ─ WHY THIS MATTERS (SAFETY GUARANTEES & DECISION FLOWCHART)
     # ══════════════════════════════════════════════════════════════════════════
     heading("Why This Matters", size=26, before=6)
     label("The five non-negotiable guarantees this system provides.", size=11, color=GREY, after=4)
@@ -910,22 +864,22 @@ def create_educational_report():
     p = cg6.paragraphs[0]; p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = p.add_run("DECISION GATE 3: ACTUATION & FORENSIC CRYPTOGRAPHIC SEAL\n")
     r.font.name = F; r.font.bold = True; r.font.size = Pt(9.5); r.font.color.rgb = INK
-    r2 = p.add_run("Command Dispatched to PLC / SCADA Bus  ·  SHA-256 Hash Chained  ·  Tamper-Proof Audit Sealed")
+    r2 = p.add_run("Command Dispatched to SCADA / PLC Bus  ·  SHA-256 Hash Chained  ·  Tamper-Proof Audit Sealed")
     r2.font.name = F; r2.font.size = Pt(8.5); r2.font.color.rgb = BODY
 
     fig_caption("Figure 4: Deterministic AST & Cryptographic RBAC Verification Decision Gate Flowchart.")
 
     subheading("Five Foundational Guarantees")
-    bullet("1. Absolute Data Sovereignty: ", "Zero external bytes. Physically impossible for telemetry or IP to leak outside.")
+    bullet("1. Absolute Data Sovereignty: ", "Zero external bytes. Physically impossible for telemetry or intellectual property to leak.")
     bullet("2. Deterministic Safety Interlocks: ", "100% fail-closed rule architecture. Commands fail safely if clearance or syntax fails.")
-    bullet("3. Consumer Workstation Deployment: ", "Runs comfortably inside 6.84 GB VRAM on a $300 commercial GPU.")
+    bullet("3. Consumer Workstation Deployment: ", "Runs comfortably inside 6.84 GB VRAM on an affordable $300 commercial GPU.")
     bullet("4. Institutional Tribal Knowledge Capture: ", "Retains retiring expert diagnostic patterns inside searchable local embeddings.")
     bullet("5. Cryptographic Non-Repudiation: ", "SHA-256 hash chains ensure post-incident forensic audits cannot be modified or forged.")
 
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 11 ─ INDUSTRIAL IMPACT & ECONOMIC VALUE
+    # PAGE 11 ─ INDUSTRIAL IMPACT & STRATEGIC AUTONOMY
     # ══════════════════════════════════════════════════════════════════════════
     heading("Industrial Impact", size=26, before=6)
     label("Measurable financial savings and functional safety transformation.", size=11, color=GREY, after=4)
@@ -933,8 +887,8 @@ def create_educational_report():
 
     subheading("Millions of Dollars in Avoided Unplanned Downtime")
     body(
-        "In continuous hydrocarbon refining, equipment trips cascade. A forced outage on a single wet gas compressor shuts down "
-        "the entire catalytic cracking unit, incurring ~$450,000 per hour in idle capacity, flaring fines, and thermal shock damage. "
+        "In continuous hydrocarbon and heavy industrial processing, equipment trips cascade. A forced outage on a single wet gas "
+        "compressor shuts down the entire catalytic cracking unit, incurring ~$450,000 per hour in lost throughput and flaring fines. "
         "By providing 14 to 21 days of advance notice through sub-harmonic FFT spectral trending, plants transition from chaotic "
         "emergency repairs to planned maintenance windows—saving millions annually."
     )
@@ -960,10 +914,10 @@ def create_educational_report():
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 12 ─ RESULTS (+ EMBEDDED BENCHMARK BAR CHART FROM PDF)
+    # PAGE 12 ─ RESULTS (EMPIRICAL BENCHMARK BAR CHART)
     # ══════════════════════════════════════════════════════════════════════════
     heading("Results", size=26, before=6)
-    label("Empirical measurements under full simulated refinery SCADA workload.", size=11, color=GREY, after=4)
+    label("Empirical measurements under full simulated industrial LLM inference workload.", size=11, color=GREY, after=4)
     divider()
 
     rtbl = doc.add_table(rows=7, cols=3)
@@ -989,14 +943,9 @@ def create_educational_report():
             r = p.add_run(txt); r.font.name = F; r.font.size = Pt(9); r.font.color.rgb = BODY
             if ci == 0: r.font.bold = True; r.font.color.rgb = INK
 
-    # Embed Benchmark Bar Chart if available
-    if os.path.exists("chart_benchmarks_bar.png"):
-        p_bc = doc.add_paragraph()
-        p_bc.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p_bc.paragraph_format.space_before = Pt(6)
-        p_bc.paragraph_format.space_after = Pt(2)
-        p_bc.add_run().add_picture("chart_benchmarks_bar.png", width=Inches(4.8))
-        fig_caption("Figure: Measured Benchmark Performance vs. Certified Industrial Safety Limits.")
+    # Embed Benchmark Bar Chart
+    bm_chart = "extracted_user_images/image2.png" if os.path.exists("extracted_user_images/image2.png") else "chart_benchmarks_bar.png"
+    embed_image(bm_chart, width_in=4.8, caption="Figure: Measured Benchmark Performance vs. Certified Industrial Safety Limits.")
 
     body_bold_inline([
         ("Validation Summary: ", True),
@@ -1007,85 +956,98 @@ def create_educational_report():
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 13 ─ VISUAL SHOWCASE: PART 1 (CONSOLE & 3D DIGITAL TWIN)
+    # PAGE 13 ─ SHOWCASE: CONTROL ROOM & 3D DIGITAL TWIN (EMBEDDED IMAGES)
     # ══════════════════════════════════════════════════════════════════════════
     heading("System Showcase: Control Room & Digital Twin", size=22, before=4)
     label("Real-time telemetry streaming and 3D physical equipment visualization.", size=11, color=GREY, after=4)
     divider(after=8)
 
-    # Screenshot Placeholder 1
-    screenshot_placeholder(
-        "SCREENSHOT 1: OPERATOR CONSOLE & SCADA TELEMETRY STREAM",
-        "Capture the main control room dashboard showing live telemetry streams (vibration, pressure, temperature, RPM)\nacross the four rotating machines: Pump 301A, Compressor 102, Blower 401, and Turbo 205."
-    )
-    fig_caption("Figure 5: Main Operator Console & Real-Time SCADA Telemetry Stream — 100ms multi-machine telemetry dashboard with continuous vibration, thermal, and pressure monitoring.")
+    # Screenshot 1: Main Operator Console
+    embed_image("extracted_user_images/image3.png", width_in=5.9, caption="Figure 5: Main Operator Console and Dashboard UI — Real-time telemetry streaming, vibration alarms, and machine unit monitoring.")
 
-    blank(2)
+    blank(4)
 
-    # Screenshot Placeholder 2
-    screenshot_placeholder(
-        "SCREENSHOT 2: INTERACTIVE 3D WEBGL DIGITAL TWIN",
-        "Capture the Three.js 3D Digital Twin viewport showing real-time machine rotation,\nthermal heat gradient shaders, and simulated combustion blower flame intensity at 60 FPS."
-    )
-    fig_caption("Figure 6: Interactive 3D WebGL Digital Twin — Live parametric equipment twin reflecting machine RPM, thermal distribution, and operational state transitions.")
+    # Screenshot 2: 3D Digital Twin 4-Machine Grid
+    twin_grid = doc.add_table(rows=2, cols=2)
+    twin_grid.alignment = WD_TABLE_ALIGNMENT.CENTER
+    img_twins = [
+        ("extracted_user_images/image4.png", "Pump 301A"),
+        ("extracted_user_images/image5.png", "Compressor 102"),
+        ("extracted_user_images/image6.png", "Blower 401"),
+        ("extracted_user_images/image7.png", "Turbo 205")
+    ]
+    for idx, (img_p, lbl) in enumerate(img_twins):
+        row_i = idx // 2
+        col_i = idx % 2
+        cell = twin_grid.cell(row_i, col_i)
+        cell.width = Inches(2.95)
+        clear_cell_borders(cell)
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(1); p.paragraph_format.space_after = Pt(1)
+        if os.path.exists(img_p):
+            p.add_run().add_picture(img_p, width=Inches(2.88))
+
+    fig_caption("Figure 6: Interactive 3D WebGL Digital Twin — Live parametric equipment twins (Pump 301A, Compressor 102, Blower 401, Turbo 205) reflecting rotational RPM, thermal distribution shaders, and operating state transitions.")
 
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 14 ─ VISUAL SHOWCASE: PART 2 (VISION INSPECTION & FFT ANALYTICS)
+    # PAGE 14 ─ SHOWCASE: MULTIMODAL VISION & CODE SANDBOX (EMBEDDED IMAGES)
     # ══════════════════════════════════════════════════════════════════════════
     heading("System Showcase: Multimodal Vision & DSP Analytics", size=22, before=4)
-    label("Air-gapped computer vision blueprint OCR and FFT spectral vibration analytics.", size=11, color=GREY, after=4)
+    label("Air-gapped computer vision blueprint OCR and interactive code execution.", size=11, color=GREY, after=4)
     divider(after=8)
 
-    # Screenshot Placeholder 3
-    screenshot_placeholder(
-        "SCREENSHOT 3: MULTIMODAL P&ID BLUEPRINT OCR & INSPECTION",
-        "Capture the Vision model interface analyzing a scanned P&ID engineering drawing,\nshowing automated valve tag extraction (XV-3012, PCV-4401), pipe line tracing, and defect highlights."
-    )
-    fig_caption("Figure 7: Multimodal P&ID Blueprint Vision Inspection (Qwen2.5-VL) — Automated extraction of piping tags, isolation boundaries, and structural defect identification.")
+    # Screenshot 3: Multimodal Vision P&ID
+    embed_image("extracted_user_images/image8.png", width_in=5.9, caption="Figure 7: Multimodal P&ID Blueprint Vision Inspection (Qwen2.5-VL) — Automated extraction of piping tags, isolation boundaries, and structural defect identification.")
 
-    blank(2)
+    blank(4)
 
-    # Screenshot Placeholder 4
-    screenshot_placeholder(
-        "SCREENSHOT 4: FFT HARMONICS & ISO 10816-3 VIBRATION DIAGNOSTICS",
-        "Capture the Vibration Spectral Analysis tab displaying the Fast Fourier Transform (FFT) plot,\nshowing 1X unbalance peak, 2X misalignment harmonic, bearing defect frequencies, and ISO Zone C/D alarms."
-    )
-    fig_caption("Figure 8: FFT Spectral Vibration Harmonics & ISO 10816-3 Diagnostics — Real-time spectral decomposition identifying dominant mechanical defect frequencies.")
+    # Screenshot 4: Agent Based Code Sandbox (Studio IDE)
+    embed_image("extracted_user_images/image9.png", width_in=5.9, caption="Figure 8: Agent-Based Code Sandbox (Sovereign Studio) — Isolated local Python environment executing safety algorithms and API 510 remaining wall-life calculations.")
 
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 15 ─ VISUAL SHOWCASE: PART 3 (SAFETY INTERLOCK & FORENSIC LEDGER)
+    # PAGE 15 ─ SHOWCASE: ROLE-BASED ACCESS CONTROL (THE MVP - EMBEDDED IMAGES)
+    # ══════════════════════════════════════════════════════════════════════════
+    heading("System Showcase: Role-Based AI Access-Restrictions", size=22, before=4)
+    label("The MVP: Role-Based Access Control (RBAC) preventing unauthorized or destructive model usage.", size=11, color=GREY, after=4)
+    divider(after=8)
+
+    # Screenshot 5: Role-Based User Login Gateway
+    embed_image("extracted_user_images/image10.png", width_in=3.4, caption="Figure 9: Role-Based User Login Gateway — Compulsory cryptographic authentication enforcing operator clearance grades throughout the workbench.")
+
+    blank(4)
+
+    # Screenshot 6: Admin Portal for User Registry
+    embed_image("extracted_user_images/image11.png", width_in=5.9, caption="Figure 10: Admin Portal for User Registry in Various Grades — Local SQLite RBAC provisioning interface (Grade 1 Operator, Grade 2 Engineer, Grade 3 Superintendent, Admin).")
+
+    doc.add_page_break()
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PAGE 16 ─ SHOWCASE: SAFETY INTERLOCKS & AUDIT LEDGER (EMBEDDED IMAGES)
     # ══════════════════════════════════════════════════════════════════════════
     heading("System Showcase: Safety Interlocks & Audit Ledger", size=22, before=4)
     label("Deterministic AST syntax enforcement and cryptographic SHA-256 audit trails.", size=11, color=GREY, after=4)
     divider(after=8)
 
-    # Screenshot Placeholder 5
-    screenshot_placeholder(
-        "SCREENSHOT 5: DETERMINISTIC AST SAFETY INTERLOCK & RBAC GATE",
-        "Capture the safety interlock dialog or log showing an unauthorized command or unverified emergency trip\nbeing intercepted and rejected character-by-character by the AST parser with fail-closed protection."
-    )
-    fig_caption("Figure 9: Deterministic AST Safety Interlock & Role-Based Access Control — AST syntax validation intercepting unverified commands before reaching physical actuators.")
+    # Screenshot 7: AST Safety Interlock
+    embed_image("extracted_user_images/image12.png", width_in=5.9, caption="Figure 11: Deterministic AST Safety Interlock & Role-Based Access Control — Character-by-character AST syntax validation intercepting and blocking unverified commands before reaching physical actuators.")
 
-    blank(2)
+    blank(4)
 
-    # Screenshot Placeholder 6
-    screenshot_placeholder(
-        "SCREENSHOT 6: CRYPTOGRAPHIC SHA-256 FORENSIC AUDIT LEDGER",
-        "Capture the Forensic Audit Ledger table showing chained SHA-256 block hashes,\noperator cryptographic IDs, timestamps, action payloads, and tamper-evident verification status."
-    )
-    fig_caption("Figure 10: Cryptographic SHA-256 Append-Only Audit Ledger — Immutable forensic chain recording every query, telemetry anomaly, operator approval, and trip signal.")
+    # Screenshot 8: SHA-256 Forensic Audit Ledger
+    embed_image("extracted_user_images/image13.png", width_in=5.9, caption="Figure 12: Cryptographic SHA-256 Append-Only Audit Ledger — Immutable forensic chain recording every query, telemetry anomaly, operator approval, and trip signal.")
 
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 16 ─ REFERENCES
+    # PAGE 17 ─ REFERENCES
     # ══════════════════════════════════════════════════════════════════════════
     heading("References", size=26, before=6)
-    label("Standards, papers, and frameworks this project builds upon.", size=11, color=GREY, after=4)
+    label("Standards, papers, and foundation frameworks this project builds upon.", size=11, color=GREY, after=4)
     divider()
 
     refs = [
@@ -1099,7 +1061,7 @@ def create_educational_report():
         "[8]  Sandhu, R. S. et al. (1996) — Role-based access control models. IEEE Computer, 29(2), 38–47.",
         "[9]  Grieves, M. & Vickers, J. (2017) — Digital Twin: Mitigating unpredictable behavior in complex systems. Springer.",
         "[10] MRPL (2024) — Process Safety & SCADA Integrity Specifications. Mangalore Refinery Technical Manual.",
-        "[11] Sovereign Industrial AI Workbench — Official Open-Source Codebase & System Architecture: https://github.com/mukuld1511-bit/Locall-Agentic-AI-Workbench (2026)."
+        "[11] Sovereign Industrial AI Workbench — Official Open-Source Codebase & Architecture: https://github.com/mukuld1511-bit/Locall-Agentic-AI-Workbench (2026)."
     ]
     for ref in refs:
         p = doc.add_paragraph()
@@ -1114,7 +1076,7 @@ def create_educational_report():
     doc.add_page_break()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PAGE 17 ─ VOTE OF THANKS (PRESERVED SUPERVISOR & COLLEGE DETAILS)
+    # PAGE 18 ─ VOTE OF THANKS (SUPERVISOR & COLLEGE CREDITS)
     # ══════════════════════════════════════════════════════════════════════════
     heading("Vote of Thanks", size=26, before=6)
     divider()
@@ -1151,20 +1113,10 @@ def create_educational_report():
     r_info = p_info.add_run("B.Tech CSE (AI & ML)  ·  Roll No. 28240613\nPanipat Institute of Engineering & Technology")
     r_info.font.name = F; r_info.font.size = Pt(10); r_info.font.color.rgb = GREY
 
-    # ── Save Outputs ──────────────────────────────────────────────────────────
-    saved_any = False
-    for candidate in [
-        "Sovereign_Industrial_AI_Workbench_Report_Final.docx",
-        "Sovereign_Industrial_AI_Workbench_Report_Updated.docx",
-        "Sovereign_Industrial_AI_Workbench_Report_V2.docx",
-        "Sovereign_Industrial_AI_Workbench_Report_GitHub.docx"
-    ]:
-        try:
-            doc.save(candidate)
-            print(f"Successfully saved: {candidate}")
-            saved_any = True
-        except Exception as e:
-            print(f"Note: {candidate} is currently open in Word ({e}).")
+    # ── Save Single Final Output File ─────────────────────────────────────────
+    output_path = "Sovereign_Industrial_AI_Workbench_Report_Final.docx"
+    doc.save(output_path)
+    print(f"Successfully generated and saved final report: {output_path}")
 
 
 if __name__ == "__main__":
