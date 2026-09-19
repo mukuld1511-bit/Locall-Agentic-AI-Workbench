@@ -1067,17 +1067,21 @@ export default function App() {
     let action = 'STOP';
     let params: Record<string, any> | undefined = undefined;
 
-    if (text.includes('emergency') || text.includes('shutdown') || text.includes('trip')) {
+    if (text.includes('emergency') || text.includes('shutdown') || text.includes('trip') || text.includes('esd') || text.includes('khatra')) {
       action = 'EMERGENCY_SHUTDOWN';
-    } else if (text.includes('purge') || text.includes('relief') || text.includes('depressurize') || text.includes('pressure relief')) {
+    } else if (text.includes('purge') || text.includes('relief') || text.includes('depressurize') || text.includes('valve') || text.includes('pressure relief') || text.includes('hawa nikal')) {
       action = 'PURGE_VALVE';
-    } else if (text.includes('boost') || text.includes('badhao') || text.includes('increase') || text.includes('tez') || text.includes('speed up')) {
+    } else if (text.includes('lube') || text.includes('lubricat') || text.includes('oil') || text.includes('tel')) {
+      action = 'LUBE_CIRCULATE';
+    } else if (text.includes('cool') || text.includes('cooling') || text.includes('flush') || text.includes('water') || text.includes('thanda')) {
+      action = 'COOLING_FLUSH';
+    } else if (text.includes('boost') || text.includes('badhao') || text.includes('increase') || text.includes('tez') || text.includes('speed up') || text.includes('accelerate') || text.includes('overdrive') || text.includes('badao')) {
       action = 'BOOST';
-    } else if (text.includes('stop') || text.includes('halt') || text.includes('ruk') || text.includes('roko') || text.includes('band')) {
+    } else if (text.includes('stop') || text.includes('halt') || text.includes('ruk') || text.includes('roko') || text.includes('band') || text.includes('pause') || text.includes('off') || text.includes('thapp')) {
       action = 'STOP';
-    } else if (text.includes('start') || text.includes('resume') || text.includes('chalu') || text.includes('chalao')) {
+    } else if (text.includes('start') || text.includes('resume') || text.includes('chalu') || text.includes('chalao') || text.includes('run') || text.includes('on') || text.includes('activate')) {
       action = 'START';
-    } else if (text.includes('throttle') || text.includes('slow') || text.includes('dheere') || text.includes('kam')) {
+    } else if (text.includes('throttle') || text.includes('slow') || text.includes('dheere') || text.includes('kam') || text.includes('decelerate') || text.includes('ghatao')) {
       action = 'THROTTLE';
     }
 
@@ -2452,7 +2456,7 @@ export default function App() {
                         type="text"
                         value={newEmpName}
                         onChange={(e) => setNewEmpName(e.target.value)}
-                        placeholder="e.g. Ramesh Kumar"
+                        placeholder="e.g. J. Doe, PE (Lead Engineer)"
                         className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                         required
                       />
@@ -2827,7 +2831,7 @@ export default function App() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setMachineVoiceCommand(`speed badhao ${selectedMachine.id} by 20%`)}
+                        onClick={() => setMachineVoiceCommand(`increase speed ${selectedMachine.id} by 20%`)}
                         className="px-2 py-0.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 shrink-0 cursor-pointer font-semibold"
                       >
                         🚀 Speed +20%
@@ -2855,17 +2859,17 @@ export default function App() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setMachineVoiceCommand(`machine ruko ${selectedMachine.id}`)}
+                        onClick={() => setMachineVoiceCommand(`halt ${selectedMachine.id}`)}
                         className="px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shrink-0 cursor-pointer font-semibold"
                       >
-                        🛑 Ruko
+                        🛑 Halt
                       </button>
                       <button
                         type="button"
-                        onClick={() => setMachineVoiceCommand(`chalu karo ${selectedMachine.id}`)}
+                        onClick={() => setMachineVoiceCommand(`start sequence ${selectedMachine.id}`)}
                         className="px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0 cursor-pointer font-semibold"
                       >
-                        🟢 Chalu
+                        🟢 Start
                       </button>
                     </div>
 

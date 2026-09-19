@@ -63,3 +63,8 @@ FINISH_EVERYTHING.sh
 MAX_WORK_FINISH.sh
 FINISH_EMPLOYEE_ADMIN.sh
 PHASE2_FINISH.sh
+
+# Office temporary lock files
+~$*.docx
+~$*.xlsx
+~$*.pptx

@@ -105,8 +105,12 @@ function startPythonBackend() {
   });
 
   req.on('error', () => {
-    // Port 8088 is free, spawn backend process
-    const pythonExecutable = path.join(__dirname, '../.venv/Scripts/python.exe');
+    // Port 8088 is free, spawn backend process (cross-platform Linux/Windows)
+    const isWindows = process.platform === 'win32';
+    const venvPython = isWindows 
+      ? path.join(__dirname, '../.venv/Scripts/python.exe')
+      : path.join(__dirname, '../.venv/bin/python');
+    const pythonExecutable = require('fs').existsSync(venvPython) ? venvPython : (isWindows ? 'python' : 'python3');
     const backendScript = path.join(__dirname, '../backend/api_server.py');
     const projectRoot = path.join(__dirname, '..');
 
